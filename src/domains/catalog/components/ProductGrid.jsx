@@ -27,31 +27,57 @@ const parsePrice = (priceStr) => {
 export const ProductGrid = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Estados de catálogo con Supabase
+  // Opciones dinámicas
+  const [marcasDisponibles, setMarcasDisponibles] = useState([]);
+  const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
+
+  // Filtros activos
+  const [marcasActivas, setMarcasActivas] = useState([]);
+  const [categoriasActivas, setCategoriasActivas] = useState([]);
+  const [precioMax, setPrecioMax] = useState(1000);
+  const [busqueda, setBusqueda] = useState('');
+
+  // Estados de datos y control UI
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
-
-  // Estados de filtros multi-selección (arreglos)
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [selectedBrands, setSelectedBrands] = useState([]);
-  const [maxPrice, setMaxPrice] = useState(700);
-  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const itemsPerPage = 30;
 
-  const categories = ['Running', 'Casual', 'Vestir', 'Urbano', 'Deportivo', 'Edición Limitada'];
-  const brands = ['Nike', 'Adidas', 'Puma', 'New Balance', 'Jordan', 'Asics', 'Converse', 'Vans'];
+  // Carga de opciones dinámicas de filtros al montar el componente
+  useEffect(() => {
+    let isMounted = true;
 
-  // Carga asíncrona de productos al montar el componente
+    catalogService.getFilterOptions()
+      .then(({ marcas, categorias }) => {
+        if (isMounted) {
+          setMarcasDisponibles(marcas || []);
+          setCategoriasDisponibles(categorias || []);
+        }
+      })
+      .catch((err) => {
+        console.error('Error al cargar opciones de filtro:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Carga de productos desde Supabase dependiente de los filtros activos
   useEffect(() => {
     let isMounted = true;
     setCargando(true);
     setError(null);
 
-    catalogService.getProducts()
+    catalogService.getProducts({
+      marcas: marcasActivas,
+      categorias: categoriasActivas,
+      precioMax,
+      busqueda
+    })
       .then((data) => {
         if (isMounted) {
           setProductos(data || []);
@@ -68,7 +94,7 @@ export const ProductGrid = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [marcasActivas, categoriasActivas, precioMax, busqueda]);
 
   // Sincronización bidireccional con Query Params (?categoria=... & ?marca=...)
   useEffect(() => {
@@ -76,101 +102,92 @@ export const ProductGrid = () => {
     const brandParam = searchParams.get('marca');
 
     if (catParam) {
-      setSelectedCategories(prev => {
-        const match = categories.find(c => c.toLowerCase() === catParam.toLowerCase()) || catParam;
+      setCategoriasActivas((prev) => {
+        const match = categoriasDisponibles.find(c => c.toLowerCase() === catParam.toLowerCase()) || catParam;
         return prev.includes(match) ? prev : [...prev, match];
       });
     }
 
     if (brandParam) {
-      setSelectedBrands(prev => {
-        const match = brands.find(b => b.toLowerCase() === brandParam.toLowerCase()) || brandParam;
+      setMarcasActivas((prev) => {
+        const match = marcasDisponibles.find(b => b.toLowerCase() === brandParam.toLowerCase()) || brandParam;
         return prev.includes(match) ? prev : [...prev, match];
       });
     }
-  }, [searchParams]);
+  }, [searchParams, categoriasDisponibles, marcasDisponibles]);
 
   // Contabilizar filtros activos
   const activeFiltersCount =
-    selectedCategories.length +
-    selectedBrands.length +
-    (maxPrice < 700 ? 1 : 0) +
-    (searchTerm.trim() ? 1 : 0);
+    categoriasActivas.length +
+    marcasActivas.length +
+    (precioMax < 1000 ? 1 : 0) +
+    (busqueda.trim() ? 1 : 0);
 
-  // Filtrado de productos simultáneo con soporte multi-selección
-  const filteredProducts = productos.filter((product) => {
-    const prodCategory = product.categoria || product.category || '';
-    const prodBrand = product.marca || product.brand || '';
-    const prodName = product.nombre || product.name || '';
-    const prodPrice = product.precio_actual !== undefined && product.precio_actual !== null
-      ? product.precio_actual
-      : product.price;
-
-    // Categoría: si no hay seleccionadas, pasan todas. Si hay seleccionadas, debe coincidir con alguna.
-    const matchCategory =
-      selectedCategories.length === 0 ||
-      (prodCategory && selectedCategories.some(c => c.toLowerCase() === prodCategory.toLowerCase()));
-
-    // Marca: si no hay seleccionadas, pasan todas. Si hay seleccionadas, debe coincidir con alguna (ej. Nike O Adidas).
-    const matchBrand =
-      selectedBrands.length === 0 ||
-      (prodBrand && selectedBrands.some(b => b.toLowerCase() === prodBrand.toLowerCase()));
-
-    // Precio: slider estricto
-    const numericPrice = parsePrice(prodPrice);
-    const matchPrice = numericPrice <= maxPrice;
-
-    // Buscador de texto reactivo
-    const matchSearch =
-      !searchTerm.trim() ||
-      prodName.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
-      (prodBrand && prodBrand.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||
-      (prodCategory && prodCategory.toLowerCase().includes(searchTerm.toLowerCase().trim()));
-
-    return matchCategory && matchBrand && matchPrice && matchSearch;
-  });
-
-  // Cálculo estricto de paginación
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
+  // Cálculo estricto de paginación sobre productos obtenidos desde Supabase
+  const totalPages = Math.ceil(productos.length / itemsPerPage) || 1;
   const indexOfLastProduct = currentPage * itemsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - itemsPerPage;
-  const currentProducts = filteredProducts.slice(
+  const currentProducts = productos.slice(
     indexOfFirstProduct,
-    Math.min(indexOfLastProduct, filteredProducts.length)
+    Math.min(indexOfLastProduct, productos.length)
   );
 
   // Manejadores interactivos de filtros múltiples
   const handleToggleCategory = (category) => {
-    setSelectedCategories(prev =>
-      prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
-    );
+    setCategoriasActivas(prev => {
+      const isSelected = prev.includes(category);
+      const next = isSelected ? prev.filter(c => c !== category) : [...prev, category];
+      if (isSelected && searchParams.get('categoria')?.toLowerCase() === category.toLowerCase()) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('categoria');
+        setSearchParams(nextParams, { replace: true });
+      }
+      return next;
+    });
     setCurrentPage(1);
   };
 
   const handleClearCategories = () => {
-    setSelectedCategories([]);
+    setCategoriasActivas([]);
     setCurrentPage(1);
+    if (searchParams.has('categoria')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('categoria');
+      setSearchParams(nextParams, { replace: true });
+    }
   };
 
   const handleToggleBrand = (brand) => {
-    setSelectedBrands(prev =>
-      prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand]
-    );
+    setMarcasActivas(prev => {
+      const isSelected = prev.includes(brand);
+      const next = isSelected ? prev.filter(b => b !== brand) : [...prev, brand];
+      if (isSelected && searchParams.get('marca')?.toLowerCase() === brand.toLowerCase()) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('marca');
+        setSearchParams(nextParams, { replace: true });
+      }
+      return next;
+    });
     setCurrentPage(1);
   };
 
   const handleClearBrands = () => {
-    setSelectedBrands([]);
+    setMarcasActivas([]);
     setCurrentPage(1);
+    if (searchParams.has('marca')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('marca');
+      setSearchParams(nextParams, { replace: true });
+    }
   };
 
   const handlePriceChange = (price) => {
-    setMaxPrice(price);
+    setPrecioMax(price);
     setCurrentPage(1);
   };
 
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+    setBusqueda(e.target.value);
     setCurrentPage(1);
   };
 
@@ -185,10 +202,10 @@ export const ProductGrid = () => {
   };
 
   const handleResetFilters = () => {
-    setSelectedCategories([]);
-    setSelectedBrands([]);
-    setMaxPrice(700);
-    setSearchTerm('');
+    setCategoriasActivas([]);
+    setMarcasActivas([]);
+    setPrecioMax(1000);
+    setBusqueda('');
     setCurrentPage(1);
     setSearchParams({}, { replace: true });
   };
@@ -221,8 +238,8 @@ export const ProductGrid = () => {
             <p className="text-xs sm:text-sm text-gray-500 font-medium">
               {cargando
                 ? ''
-                : filteredProducts.length > 0
-                  ? `Mostrando ${indexOfFirstProduct + 1} - ${Math.min(indexOfLastProduct, filteredProducts.length)} de ${filteredProducts.length} modelos`
+                : productos.length > 0
+                  ? `Mostrando ${indexOfFirstProduct + 1} - ${Math.min(indexOfLastProduct, productos.length)} de ${productos.length} modelos`
                   : 'No se encontraron modelos con los filtros seleccionados'}
             </p>
             {activeFiltersCount > 0 && (
@@ -301,7 +318,7 @@ export const ProductGrid = () => {
                 <input
                   id="catalog-search"
                   type="text"
-                  value={searchTerm}
+                  value={busqueda}
                   onChange={handleSearchChange}
                   placeholder="Ej. Air Force, Ultraboost..."
                   className="w-full px-3.5 py-2 pl-9 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
@@ -309,11 +326,11 @@ export const ProductGrid = () => {
                 <svg className="w-4 h-4 text-gray-400 absolute left-3 top-2.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                {searchTerm && (
+                {busqueda && (
                   <button
                     type="button"
                     onClick={() => {
-                      setSearchTerm('');
+                      setBusqueda('');
                       setCurrentPage(1);
                     }}
                     className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 text-xs p-0.5 cursor-pointer"
@@ -330,13 +347,13 @@ export const ProductGrid = () => {
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <span>Marcas</span>
-                  {selectedBrands.length > 0 && (
+                  {marcasActivas.length > 0 && (
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
-                      {selectedBrands.length}
+                      {marcasActivas.length}
                     </span>
                   )}
                 </h3>
-                {selectedBrands.length > 0 && (
+                {marcasActivas.length > 0 && (
                   <button
                     type="button"
                     onClick={handleClearBrands}
@@ -347,8 +364,8 @@ export const ProductGrid = () => {
                 )}
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {brands.map((brand) => {
-                  const isSelected = selectedBrands.includes(brand);
+                {marcasDisponibles.map((brand) => {
+                  const isSelected = marcasActivas.includes(brand);
                   return (
                     <button
                       key={brand}
@@ -377,13 +394,13 @@ export const ProductGrid = () => {
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <span>Categorías</span>
-                  {selectedCategories.length > 0 && (
+                  {categoriasActivas.length > 0 && (
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
-                      {selectedCategories.length}
+                      {categoriasActivas.length}
                     </span>
                   )}
                 </h3>
-                {selectedCategories.length > 0 && (
+                {categoriasActivas.length > 0 && (
                   <button
                     type="button"
                     onClick={handleClearCategories}
@@ -394,8 +411,8 @@ export const ProductGrid = () => {
                 )}
               </div>
               <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                {categories.map((cat) => {
-                  const isSelected = selectedCategories.includes(cat);
+                {categoriasDisponibles.map((cat) => {
+                  const isSelected = categoriasActivas.includes(cat);
                   return (
                     <button
                       key={cat}
@@ -435,21 +452,21 @@ export const ProductGrid = () => {
                   Precio Máximo
                 </h3>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  Hasta S/ {maxPrice}
+                  Hasta S/ {precioMax}
                 </span>
               </div>
               <input
                 type="range"
-                min="200"
-                max="700"
+                min="0"
+                max="1000"
                 step="10"
-                value={maxPrice}
+                value={precioMax}
                 onChange={(e) => handlePriceChange(Number(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 touch-manipulation"
               />
               <div className="flex justify-between text-[11px] text-gray-400">
-                <span>S/ 200</span>
-                <span>S/ 700</span>
+                <span>S/ 0</span>
+                <span>S/ 1000</span>
               </div>
             </div>
 
@@ -467,10 +484,10 @@ export const ProductGrid = () => {
           {/* Columna Derecha: Catálogo de Zapatillas con Botón 'Ver más' */}
           <main className="lg:col-span-3 w-full flex flex-col">
             {/* Chips de Filtros Activos Seleccionados */}
-            {(selectedBrands.length > 0 || selectedCategories.length > 0 || searchTerm.trim() || maxPrice < 700) && (
+            {(marcasActivas.length > 0 || categoriasActivas.length > 0 || busqueda.trim() || precioMax < 1000) && (
               <div className="flex flex-wrap items-center gap-1.5 mb-6 p-3 bg-white rounded-xl border border-gray-100 shadow-sm text-xs">
                 <span className="text-gray-400 font-semibold mr-1">Filtros activos:</span>
-                {selectedBrands.map(b => (
+                {marcasActivas.map(b => (
                   <span key={b} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                     <span>{b}</span>
                     <button
@@ -483,7 +500,7 @@ export const ProductGrid = () => {
                     </button>
                   </span>
                 ))}
-                {selectedCategories.map(c => (
+                {categoriasActivas.map(c => (
                   <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold bg-teal-50 text-teal-800 border border-teal-200">
                     <span>{c}</span>
                     <button
@@ -496,12 +513,12 @@ export const ProductGrid = () => {
                     </button>
                   </span>
                 ))}
-                {searchTerm.trim() && (
+                {busqueda.trim() && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold bg-gray-100 text-gray-800 border border-gray-200">
-                    <span>"{searchTerm}"</span>
+                    <span>"{busqueda}"</span>
                     <button
                       type="button"
-                      onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                      onClick={() => { setBusqueda(''); setCurrentPage(1); }}
                       className="text-gray-600 hover:text-gray-950 ml-0.5 cursor-pointer font-extrabold text-sm leading-none"
                       aria-label="Quitar búsqueda"
                     >
@@ -509,12 +526,12 @@ export const ProductGrid = () => {
                     </button>
                   </span>
                 )}
-                {maxPrice < 700 && (
+                {precioMax < 1000 && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold bg-gray-100 text-gray-800 border border-gray-200">
-                    <span>Hasta S/ {maxPrice}</span>
+                    <span>Hasta S/ {precioMax}</span>
                     <button
                       type="button"
-                      onClick={() => { setMaxPrice(700); setCurrentPage(1); }}
+                      onClick={() => { setPrecioMax(1000); setCurrentPage(1); }}
                       className="text-gray-600 hover:text-gray-950 ml-0.5 cursor-pointer font-extrabold text-sm leading-none"
                       aria-label="Restablecer precio máximo"
                     >
@@ -547,7 +564,12 @@ export const ProductGrid = () => {
                   onClick={() => {
                     setCargando(true);
                     setError(null);
-                    catalogService.getProducts()
+                    catalogService.getProducts({
+                      marcas: marcasActivas,
+                      categorias: categoriasActivas,
+                      precioMax,
+                      busqueda
+                    })
                       .then((data) => {
                         setProductos(data || []);
                         setCargando(false);
@@ -566,6 +588,7 @@ export const ProductGrid = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {currentProducts.map((product, index) => {
                   const globalIndex = indexOfFirstProduct + index;
+                  const productId = product.id_producto || product.id;
                   const nombre = product.nombre || product.name;
                   const precioActual = product.precio_actual || product.price;
                   const displayPrice = typeof precioActual === 'number'
@@ -577,12 +600,12 @@ export const ProductGrid = () => {
 
                   return (
                     <article
-                      key={product.id || globalIndex}
+                      key={productId || globalIndex}
                       className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full"
                     >
                       {/* Enlace al Detalle del Producto (PDP) en la Imagen */}
                       <Link
-                        to={`/producto/${product.id}`}
+                        to={`/producto/${productId}`}
                         className="block overflow-hidden relative aspect-square bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 touch-manipulation"
                         aria-label={`Ver detalles de ${nombre}`}
                       >
@@ -612,7 +635,7 @@ export const ProductGrid = () => {
                         <div>
                           {/* Enlace al Detalle del Producto (PDP) en el Título */}
                           <Link
-                            to={`/producto/${product.id}`}
+                            to={`/producto/${productId}`}
                             className="block group/title focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded touch-manipulation"
                           >
                             <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover/title:text-emerald-700 transition-colors leading-snug line-clamp-1">
@@ -627,7 +650,7 @@ export const ProductGrid = () => {
                         {/* Botón Ver Más */}
                         <div className="mt-5 pt-4 border-t border-gray-100">
                           <Link
-                            to={`/producto/${product.id}`}
+                            to={`/producto/${productId}`}
                             className="w-full min-h-[48px] px-4 py-3 inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 hover:bg-gray-800 active:scale-95 text-white font-semibold text-sm shadow-sm hover:shadow transition-all duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 touch-manipulation cursor-pointer"
                             aria-label={`Ver más detalles de ${nombre}`}
                           >

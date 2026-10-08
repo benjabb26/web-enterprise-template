@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import productsData from '../data/products.json';
+import catalogService from '../services/catalogService';
 import { siteConfig } from '../../../config/siteConfig.js';
+
+// Fallback de alta resolución para calzado
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=1000';
 
 /**
  * Ícono vectorial SVG de WhatsApp
  */
-const WhatsAppIcon = ({ className = "w-5 h-5 shrink-0" }) => (
+const WhatsAppIcon = ({ className = 'w-5 h-5 shrink-0' }) => (
   <svg
     className={className}
     fill="currentColor"
@@ -19,265 +22,367 @@ const WhatsAppIcon = ({ className = "w-5 h-5 shrink-0" }) => (
 );
 
 /**
- * Componente ProductDetail (Página de Detalle del Producto - PDP)
- * Flujo de compra optimizado: Selección obligatoria de talla antes de generar el pedido a WhatsApp.
+ * Formatea precio numérico o string a convención monetaria formal "S/ xx.xx".
+ */
+const formatPrice = (val) => {
+  if (val === undefined || val === null) return 'S/ 0.00';
+  if (typeof val === 'number') {
+    return `S/ ${val.toFixed(2)}`;
+  }
+  const clean = String(val).trim();
+  if (clean.startsWith('S/')) return clean;
+  const num = parseFloat(clean.replace(/[^\d.]/g, ''));
+  return !isNaN(num) ? `S/ ${num.toFixed(2)}` : clean;
+};
+
+/**
+ * Componente ProductDetail (Vista de Detalle del Producto e Inventario Relacional de Tallas)
  */
 export const ProductDetail = () => {
   const { id } = useParams();
+
+  // Estados del ciclo de vida del producto
+  const [producto, setProducto] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
+  const [tallaSeleccionada, setTallaSeleccionada] = useState(null);
+  const [productosSimilares, setProductosSimilares] = useState([]);
+
+  // Referencia y funciones de desplazamiento para el carrusel de productos similares
   const carouselRef = useRef(null);
 
-  // Búsqueda del producto
-  const product = productsData.find((p) => String(p.id) === String(id));
+  const scrollLeft = () => {
+    carouselRef.current?.scrollBy({ left: -220, behavior: 'smooth' });
+  };
 
-  // Estados interactivos
-  const [selectedSize, setSelectedSize] = useState(null);
-  const [activeImage, setActiveImage] = useState(product?.image || '');
+  const scrollRight = () => {
+    carouselRef.current?.scrollBy({ left: 220, behavior: 'smooth' });
+  };
 
-  // Arreglo de tallas de calzado
-  const sizes = [38, 39, 40, 41, 42];
-
-  // Reset y scroll suave al cargar o cambiar de producto
+  // Carga asíncrona de datos desde Supabase con prevención de fugas de memoria
   useEffect(() => {
+    let isMounted = true;
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setSelectedSize(null);
-    if (product) {
-      setActiveImage(product.image);
-    }
-  }, [id, product]);
 
-  // Si el producto no existe en el catálogo
-  if (!product) {
+    setCargando(true);
+    setError(null);
+    setTallaSeleccionada(null);
+    setProductosSimilares([]);
+
+    catalogService.getProductById(id)
+      .then((data) => {
+        if (isMounted) {
+          if (!data) {
+            setError('Producto no encontrado');
+          } else {
+            setProducto(data);
+            // Carga asíncrona de productos similares basados en marca y categoría
+            catalogService.getSimilarProducts(data.id_producto || data.id, data.marca, data.categoria)
+              .then((similares) => {
+                if (isMounted) {
+                  setProductosSimilares(similares || []);
+                }
+              })
+              .catch((err) => {
+                console.error('Error al cargar productos similares:', err);
+                if (isMounted) {
+                  setProductosSimilares([]);
+                }
+              });
+          }
+          setCargando(false);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setError(err?.message || 'Error al cargar el producto');
+          setCargando(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  // Manejador de compra por WhatsApp
+  const handleWhatsAppClick = () => {
+    if (!producto) return;
+
+    const hasTallas = Array.isArray(producto.inventario_tallas) && producto.inventario_tallas.length > 0;
+    if (hasTallas && !tallaSeleccionada) {
+      alert('Por favor, selecciona tu talla antes de continuar con la compra.');
+      return;
+    }
+
+    const nombre = producto.nombre || producto.name;
+    const precio = formatPrice(producto.precio_actual || producto.price);
+    const tallaTexto = tallaSeleccionada ? ` en talla ${tallaSeleccionada.talla}` : '';
+    const message = `Hola, me interesa el modelo ${nombre} por ${precio}${tallaTexto}. ¿Aún está disponible?`;
+    const phone = siteConfig?.whatsappNumber || '51999888777';
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  // Renderizado Condicional: Estado Cargando
+  if (cargando) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-20 text-center">
-        <span className="text-6xl">👟</span>
-        <h1 className="mt-4 text-2xl sm:text-3xl font-extrabold text-gray-900">
-          Producto no encontrado
-        </h1>
-        <p className="mt-2 text-base text-gray-600 max-w-md">
-          El modelo que estás buscando no existe o ha sido retirado de nuestra colección activa.
-        </p>
-        <Link
-          to="/productos"
-          className="mt-6 min-h-[44px] px-6 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md active:scale-95 transition-all inline-flex items-center gap-2"
-        >
-          <span>Volver al Catálogo</span>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </Link>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-20 bg-gray-50/50">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-base font-semibold text-gray-700 animate-pulse">Cargando producto...</p>
       </div>
     );
   }
 
-  // Galería de 3 ángulos simulados
-  const galleryImages = [
-    product.image,
-    'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600&auto=format&fit=crop&q=80'
-  ];
+  // Renderizado Condicional: Estado Error o No Encontrado
+  if (error || !producto) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-20 text-center bg-gray-50/50">
+        <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center text-3xl mb-4 shadow-sm border border-red-100">
+          ⚠️
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+          No se pudo cargar el producto
+        </h1>
+        <p className="mt-2 text-sm sm:text-base text-gray-600 max-w-md">
+          {error || 'El modelo que estás buscando no existe o ha sido retirado de nuestro catálogo activo.'}
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setCargando(true);
+              setError(null);
+              setProductosSimilares([]);
+              catalogService.getProductById(id)
+                .then((data) => {
+                  setProducto(data);
+                  if (data) {
+                    catalogService.getSimilarProducts(data.id_producto || data.id, data.marca, data.categoria)
+                      .then((similares) => {
+                        setProductosSimilares(similares || []);
+                      })
+                      .catch((err) => {
+                        console.error('Error al cargar productos similares:', err);
+                        setProductosSimilares([]);
+                      });
+                  }
+                  setCargando(false);
+                })
+                .catch((err) => {
+                  setError(err?.message || 'Error al cargar el producto');
+                  setCargando(false);
+                });
+            }}
+            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold text-sm transition-all shadow-sm cursor-pointer"
+          >
+            Reintentar
+          </button>
+          <Link
+            to="/"
+            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 font-semibold text-sm transition-all shadow-sm cursor-pointer inline-flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Volver al Catálogo</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  // Productos para venta cruzada (10 productos distintos al actual)
-  const relatedProducts = productsData
-    .filter((p) => String(p.id) !== String(id))
-    .slice(0, 10);
-
-  // Manejador del click a WhatsApp con validación estricta de talla
-  const handleWhatsAppClick = () => {
-    if (!selectedSize) {
-      alert("Por favor, selecciona una talla antes de continuar.");
-      return;
-    }
-    const message = `Hola, me interesa el modelo ${product.name} por ${product.price}. ¿Aún tienen stock disponible en talla ${selectedSize}?`;
-    const phone = siteConfig?.whatsappNumber || '51999999999';
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
-  };
-
-  // Controles de desplazamiento para el carrusel de venta cruzada
-  const scrollCarousel = (direction) => {
-    if (carouselRef.current) {
-      const scrollAmount = direction === 'left' ? -340 : 340;
-      carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
-  };
+  // Extracción de datos del producto
+  const nombre = producto.nombre || producto.name || 'Zapatilla Urbana';
+  const marca = producto.marca;
+  const categoria = producto.categoria || producto.category || 'Colección Oficial';
+  const descripcion = producto.descripcion || producto.description || 'Calzado urbano con diseño premium y máxima amortiguación ergonómica.';
+  const precioDisplay = formatPrice(producto.precio_actual || producto.price);
+  const imagenUrl = producto.imagen_url || producto.image || FALLBACK_IMAGE;
+  const tieneTallas = Array.isArray(producto.inventario_tallas) && producto.inventario_tallas.length > 0;
 
   return (
-    <div className="relative z-10 w-full py-8 sm:py-12 lg:py-16 bg-gray-50/40">
+    <div className="relative z-10 w-full py-8 sm:py-12 lg:py-16 bg-gray-50/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Breadcrumb de Navegación */}
-        <nav className="mb-6 sm:mb-8 flex items-center gap-2 text-xs sm:text-sm text-gray-500 font-medium" aria-label="Migas de pan">
-          <Link to="/" className="hover:text-gray-900 transition-colors">Inicio</Link>
-          <span>/</span>
-          <Link to="/productos" className="hover:text-gray-900 transition-colors">Productos</Link>
-          <span>/</span>
-          <span className="text-gray-900 font-semibold truncate max-w-[200px] sm:max-w-none">{product.name}</span>
-        </nav>
 
-        {/* Ficha Principal de Producto (Flujo Natural Móvil: flex-col, Desktop: md:grid md:grid-cols-2) */}
-        <div className="flex flex-col md:grid md:grid-cols-2 gap-6 lg:gap-12 items-start">
-          
-          {/* Columna 1: Galería de Imágenes (Arriba en móvil) */}
-          <div className="w-full space-y-3 sm:space-y-4">
-            {/* Imagen Principal en Gran Formato */}
-            <div className="relative aspect-square overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-gray-100 shadow-xl group">
+        {/* Barra Superior con Enlace de Retorno al Catálogo */}
+        <div className="mb-6 sm:mb-8 flex items-center justify-between">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-emerald-700 bg-white hover:bg-emerald-50/60 border border-gray-200 hover:border-emerald-200 px-4 py-2.5 rounded-xl transition-all shadow-sm group touch-manipulation cursor-pointer"
+            aria-label="Volver al catálogo"
+          >
+            <svg className="w-4 h-4 text-gray-500 group-hover:text-emerald-700 group-hover:-translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Volver al Catálogo</span>
+          </Link>
+
+          {/* Breadcrumb sutil para navegación contextual */}
+          <nav className="hidden sm:flex items-center gap-2 text-xs text-gray-400 font-medium" aria-label="Migas de pan">
+            <Link to="/" className="hover:text-gray-700 transition-colors">Inicio</Link>
+            <span>/</span>
+            <span className="text-gray-600 truncate max-w-[200px]">{nombre}</span>
+          </nav>
+        </div>
+
+        {/* Layout Principal: 2 columnas en Desktop, 1 columna en Móvil */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+
+          {/* Columna Izquierda: Imagen Grande del Producto */}
+          <div className="w-full">
+            <div className="relative aspect-square overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-md group">
               <img
-                src={activeImage || product.image}
-                alt={product.name}
+                src={imagenUrl}
+                alt={nombre}
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=1000';
+                  e.currentTarget.src = FALLBACK_IMAGE;
                 }}
                 className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out"
               />
-              <div className="absolute top-4 left-4 bg-gray-900/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-semibold tracking-wide">
-                {product.category || 'Edición Oficial'}
-              </div>
-            </div>
 
-            {/* Fila de 3 Miniaturas Interactivas */}
-            <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
-              {galleryImages.map((imgSrc, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setActiveImage(imgSrc)}
-                  className={`relative aspect-square rounded-xl sm:rounded-2xl overflow-hidden bg-white border transition-all touch-manipulation cursor-pointer ${
-                    activeImage === imgSrc
-                      ? 'ring-2 ring-emerald-500 border-emerald-500 shadow-md scale-102'
-                      : 'border-gray-200 hover:border-gray-300 opacity-80 hover:opacity-100'
-                  }`}
-                  aria-label={`Ver ángulo ${idx + 1} de ${product.name}`}
-                >
-                  <img
-                    src={imgSrc || product.image}
-                    alt={`Vista ${idx + 1}`}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=600';
-                    }}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+              {/* Tag Flotante de Categoría */}
+              <div className="absolute top-4 left-4 bg-gray-900/80 backdrop-blur-sm text-white px-3.5 py-1 rounded-full text-xs font-semibold tracking-wide shadow-sm">
+                {categoria}
+              </div>
+
+              {/* Badge Glassmorphism de Precio en la Imagen */}
+              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-sm border border-white/60">
+                <span className="text-sm font-extrabold text-gray-900">
+                  {precioDisplay}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Columna 2: Información y Compra (Abajo en móvil con flujo natural) */}
-          <div className="w-full bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 border border-gray-100 shadow-sm space-y-6 sm:space-y-7">
-            
-            {/* Header del Producto */}
+          {/* Columna Derecha: Información del Producto e Inventario de Tallas */}
+          <div className="w-full bg-white rounded-3xl p-6 sm:p-8 lg:p-10 border border-gray-100 shadow-sm space-y-6">
+
+            {/* Cabecera / Marca y Nombre */}
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md uppercase tracking-wider">
-                  {siteConfig.businessName}
-                </span>
-                <span className="text-xs text-gray-400">•</span>
-                <span className="text-xs font-semibold text-gray-500">
-                  {product.category || 'Colección Urbana'}
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight">
-                {product.name}
+              {marca && (
+                <div className="mb-2">
+                  <span className="inline-block text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100/60">
+                    {marca}
+                  </span>
+                </div>
+              )}
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
+                {nombre}
               </h1>
             </div>
 
-            {/* Precio Destacado */}
+            {/* Precio Actual Destacado */}
             <div>
-              <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-emerald-600 bg-emerald-50/80 px-4 sm:px-5 py-2 sm:py-2.5 rounded-2xl inline-block shadow-sm">
-                {product.price}
+              <div className="text-3xl sm:text-4xl font-extrabold text-emerald-600 bg-emerald-50/80 px-5 py-2.5 rounded-2xl inline-block shadow-sm">
+                {precioDisplay}
               </div>
               <p className="mt-1.5 text-xs text-gray-400 font-medium">
-                Precio final con entrega coordinada por WhatsApp
+                Precio final. Coordinación y entrega personalizada vía WhatsApp.
               </p>
             </div>
 
-            {/* Descripción */}
-            <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-              {product.description}
-            </p>
-
-            {/* Viñetas de Detalles de Valor Técnicos */}
-            <div className="space-y-2.5 pt-4 border-t border-gray-100 text-xs sm:text-sm text-gray-600">
-              <div className="flex items-start gap-2.5">
-                <span className="text-base">👟</span>
-                <div>
-                  <strong className="text-gray-900">Material:</strong> Cuero sintético reforzado y tejido transpirable de alta resistencia.
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="text-base">☁️</span>
-                <div>
-                  <strong className="text-gray-900">Comodidad:</strong> Suela ergonómica con tecnología de amortiguación reactiva antifatiga.
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="text-base">🎯</span>
-                <div>
-                  <strong className="text-gray-900">Ajuste:</strong> Calce anatómico urbano con sistema de cordones de sujeción firme.
-                </div>
-              </div>
+            {/* Descripción del Producto */}
+            <div className="text-sm sm:text-base text-gray-600 leading-relaxed pt-2 border-t border-gray-100">
+              <p>{descripcion}</p>
             </div>
 
-            {/* Selector de Tallas Interactivo (Ubicado inmediatamente encima del botón de compra) */}
-            <div className="pt-4 border-t border-gray-100">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">
-                  Selecciona tu talla
-                </h3>
-                {selectedSize ? (
-                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md">
-                    Talla seleccionada: {selectedSize}
-                  </span>
-                ) : (
-                  <span className="text-xs font-medium text-amber-600">
-                    Requerido para comprar
-                  </span>
+            {/* Inventario de Tallas Relacional */}
+            {tieneTallas ? (
+              <div className="pt-6 border-t border-gray-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                    Selecciona tu talla
+                  </h2>
+                  {tallaSeleccionada ? (
+                    <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                      Talla elegida: <span className="font-extrabold">{tallaSeleccionada.talla}</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md">
+                      Selecciona una talla para continuar
+                    </span>
+                  )}
+                </div>
+
+                {/* Botones de Talla con Stock Dinámico */}
+                <div className="flex flex-wrap gap-2.5" role="group" aria-label="Selector de tallas">
+                  {producto.inventario_tallas.map((item, idx) => {
+                    const stock = Number(item.stock_talla ?? item.stock ?? 0);
+                    const sinStock = stock <= 0;
+                    const isSelected = tallaSeleccionada?.talla === item.talla;
+
+                    return (
+                      <button
+                        key={item.id_inventario || item.id || `${item.talla}-${idx}`}
+                        type="button"
+                        disabled={sinStock}
+                        onClick={() => {
+                          if (!sinStock) {
+                            setTallaSeleccionada(item);
+                          }
+                        }}
+                        className={`min-w-[48px] h-12 px-3.5 rounded-xl font-bold text-sm flex items-center justify-center transition-all touch-manipulation ${
+                          sinStock
+                            ? 'opacity-40 cursor-not-allowed bg-gray-100 text-gray-400 border border-dashed border-gray-300 line-through'
+                            : isSelected
+                              ? 'bg-gray-900 text-white border-2 border-gray-900 shadow-md scale-105'
+                              : 'bg-white text-gray-800 border border-gray-200 hover:border-gray-900 hover:bg-gray-50 cursor-pointer'
+                        }`}
+                        aria-label={`Talla ${item.talla}${sinStock ? ' agotada' : ''}`}
+                        aria-pressed={isSelected}
+                      >
+                        <span>{item.talla}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Indicador de Stock Disponible para la Talla Seleccionada */}
+                {tallaSeleccionada && (
+                  <div className="mt-3 p-3 bg-emerald-50/80 rounded-xl border border-emerald-100 text-xs sm:text-sm text-emerald-900 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <p className="font-medium">
+                      Stock disponible: <strong className="font-extrabold">{tallaSeleccionada.stock_talla ?? tallaSeleccionada.stock}</strong> unidades
+                    </p>
+                  </div>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2.5">
-                {sizes.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => setSelectedSize(size)}
-                    className={`w-11 h-11 sm:w-12 sm:h-12 min-h-[44px] min-w-[44px] rounded-xl font-bold text-sm flex items-center justify-center transition-all touch-manipulation cursor-pointer ${
-                      selectedSize === size
-                        ? 'bg-emerald-800 text-white shadow-md shadow-emerald-900/30 scale-105 border-2 border-emerald-800'
-                        : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 border border-gray-200'
-                    }`}
-                    aria-label={`Seleccionar talla ${size}`}
-                    aria-pressed={selectedSize === size}
-                  >
-                    {size}
-                  </button>
-                ))}
+            ) : (
+              /* Mensaje cuando no tiene tallas registradas */
+              <div className="pt-6 border-t border-gray-100">
+                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-600 flex items-center gap-2">
+                  <span className="text-base">ℹ️</span>
+                  <p>Talla única o consultar disponibilidad directamente.</p>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Call to Action Principal de WhatsApp */}
-            <div className="pt-2 space-y-3">
+            {/* Botón de Compra por WhatsApp */}
+            <div className="pt-4 space-y-3">
               <button
                 type="button"
                 onClick={handleWhatsAppClick}
                 className="w-full min-h-[52px] rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-base sm:text-lg shadow-lg shadow-emerald-600/25 inline-flex items-center justify-center gap-3 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500 cursor-pointer touch-manipulation"
-                aria-label={`Comprar ${product.name} por WhatsApp`}
+                aria-label={`Comprar ${nombre} por WhatsApp`}
               >
                 <WhatsAppIcon className="w-6 h-6 shrink-0" />
                 <span>Comprar por WhatsApp</span>
               </button>
 
-              {/* Micro-Garantías de Confianza */}
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-gray-400 font-medium pt-1">
+              {/* Sellos de Confianza */}
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5 text-xs text-gray-400 font-medium pt-2">
                 <span className="flex items-center gap-1">
-                  <span>🔒</span> Compra segura
+                  <span>🔒</span> Compra 100% segura
                 </span>
-                <span className="hidden sm:inline">•</span>
+                <span>•</span>
                 <span className="flex items-center gap-1">
                   <span>📦</span> Envíos a todo el país
                 </span>
-                <span className="hidden sm:inline">•</span>
+                <span>•</span>
                 <span className="flex items-center gap-1">
-                  <span>⚡</span> Respuesta rápida
+                  <span>⚡</span> Asesoría al instante
                 </span>
               </div>
             </div>
@@ -286,98 +391,135 @@ export const ProductDetail = () => {
 
         </div>
 
-        {/* Sección Cross-selling (Venta Cruzada) con Botones 'Ver más' */}
-        <section className="mt-12 sm:mt-20 pt-8 sm:pt-12 border-t border-gray-200" aria-label="Productos recomendados">
-          <div className="flex items-center justify-between mb-6 sm:mb-8">
-            <div>
-              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                Recomendados
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+        {/* Sección: También te podría interesar (Carrusel de Productos Similares) */}
+        {productosSimilares.length > 0 && (
+          <section className="mt-14 sm:mt-16 pt-10 border-t border-gray-200" aria-label="Productos similares">
+            {/* Encabezado de la Sección */}
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
                 También te podría interesar
               </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                Modelos similares recomendados para ti
+              </p>
             </div>
 
-            {/* Flechas de Navegación del Carrusel */}
-            <div className="hidden sm:flex items-center gap-2">
+            {/* Contenedor del Carrusel con Controles Flotantes Circulares */}
+            <div className="relative group/carousel">
+              {/* Botón flotante Izquierda */}
               <button
                 type="button"
-                onClick={() => scrollCarousel('left')}
-                className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:scale-95 shadow-sm transition-all cursor-pointer touch-manipulation"
-                aria-label="Ver productos anteriores"
+                onClick={scrollLeft}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:text-gray-950 hover:scale-105 active:scale-95 transition-all flex items-center justify-center absolute -left-3 sm:-left-4 top-1/2 -translate-y-1/2 z-20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                aria-label="Desplazar productos similares a la izquierda"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <button
-                type="button"
-                onClick={() => scrollCarousel('right')}
-                className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:scale-95 shadow-sm transition-all cursor-pointer touch-manipulation"
-                aria-label="Ver productos siguientes"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
 
-          {/* Carrusel Desplazable Horizontal con Botones 'Ver más' */}
-          <div
-            ref={carouselRef}
-            className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scroll-smooth snap-x snap-mandatory touch-pan-x"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {relatedProducts.map((relProduct) => (
-              <article
-                key={relProduct.id}
-                className="w-[260px] sm:w-[280px] shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
+              {/* Botón flotante Derecha */}
+              <button
+                type="button"
+                onClick={scrollRight}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white shadow-md border border-gray-200 text-gray-700 hover:text-gray-950 hover:scale-105 active:scale-95 transition-all flex items-center justify-center absolute -right-3 sm:-right-4 top-1/2 -translate-y-1/2 z-20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                aria-label="Desplazar productos similares a la derecha"
               >
-                <Link
-                  to={`/producto/${relProduct.id}`}
-                  className="block relative aspect-square overflow-hidden bg-gray-100 group/img touch-manipulation"
-                  aria-label={`Ver detalles de ${relProduct.name}`}
-                >
-                  <img
-                    src={relProduct.image}
-                    alt={relProduct.name}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=700';
-                    }}
-                    className="w-full h-full object-cover transform group-hover/img:scale-105 transition-transform duration-500 ease-out"
-                    loading="lazy"
-                  />
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full shadow-sm border border-white/60">
-                    <span className="text-xs font-extrabold text-gray-900">{relProduct.price}</span>
-                  </div>
-                </Link>
-                <div className="p-4 flex-1 flex flex-col justify-between">
-                  <div>
-                    <Link to={`/producto/${relProduct.id}`} className="block group/title touch-manipulation">
-                      <h3 className="text-base font-bold text-gray-900 group-hover/title:text-emerald-700 transition-colors truncate">
-                        {relProduct.name}
-                      </h3>
-                    </Link>
-                    <p className="mt-1 text-xs text-gray-500 line-clamp-1">{relProduct.category || 'Urbana'}</p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-gray-100">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+
+              {/* Track interior de tarjetas compactas */}
+              <div
+                ref={carouselRef}
+                className="flex gap-3 sm:gap-4 overflow-x-auto snap-x scrollbar-hide py-2 px-1"
+              >
+                {productosSimilares.slice(0, 10).map((item, idx) => {
+                  const itemId = item.id_producto || item.id || idx;
+                  const itemNombre = item.nombre || item.name || 'Calzado Deportivo';
+                  const itemMarca = item.marca;
+                  const itemCategoria = item.categoria || item.category || 'Colección';
+                  const itemImagen = item.imagen_url || item.image || FALLBACK_IMAGE;
+
+                  // Cálculo de precio numérico, precio tachado y badge de descuento
+                  const rawPrice = item.precio_actual ?? item.price;
+                  const precioNumerico = typeof rawPrice === 'number'
+                    ? rawPrice
+                    : (parseFloat(String(rawPrice || '').replace(/[^\d.]/g, '')) || 0);
+
+                  const precioOriginalNum = item.precio_original ?? item.original_price ?? (precioNumerico > 0 ? Math.round(precioNumerico * 1.3) : 0);
+                  const porcentajeDescuento = (precioOriginalNum > precioNumerico && precioOriginalNum > 0)
+                    ? Math.round(((precioOriginalNum - precioNumerico) / precioOriginalNum) * 100)
+                    : 25;
+
+                  const itemPrecio = formatPrice(precioNumerico > 0 ? precioNumerico : rawPrice);
+                  const itemPrecioOriginal = precioOriginalNum > 0 ? formatPrice(precioOriginalNum) : null;
+
+                  return (
                     <Link
-                      to={`/producto/${relProduct.id}`}
-                      className="w-full min-h-[44px] px-3 py-2.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 active:scale-95 text-white font-semibold text-xs shadow-sm hover:shadow transition-all touch-manipulation cursor-pointer"
+                      key={itemId}
+                      to={`/producto/${itemId}`}
+                      className="w-[170px] sm:w-[190px] md:w-[205px] shrink-0 snap-start bg-white rounded-2xl p-3 border border-gray-200/80 shadow-xs hover:shadow-md hover:border-gray-300 transition-all flex flex-col justify-between group cursor-pointer"
+                      aria-label={`Ver detalles de ${itemNombre}`}
                     >
-                      <span>Ver más</span>
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
+                      <div>
+                        {/* Imagen: Zapatilla centrada con fondo blanco y proporción compacta */}
+                        <div className="w-full h-28 sm:h-32 flex items-center justify-center bg-gray-50/50 rounded-xl overflow-hidden mb-2.5">
+                          <img
+                            src={itemImagen}
+                            alt={itemNombre}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = FALLBACK_IMAGE;
+                            }}
+                            className="w-full h-28 sm:h-32 object-contain p-1 transform group-hover:scale-105 transition-transform duration-300 ease-out"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        {/* Marca: Texto pequeño en mayúsculas */}
+                        <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider truncate">
+                          {itemMarca || itemCategoria}
+                        </p>
+
+                        {/* Título / Modelo: Texto a 2 líneas con altura fija para alineación perfecta */}
+                        <h3 className="text-xs sm:text-[13px] font-medium text-gray-800 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug mt-1 h-8 sm:h-9">
+                          {itemNombre}
+                        </h3>
+
+                        {/* Calificación por estrellas */}
+                        <div className="flex items-center gap-1 mt-1.5 text-amber-400 text-xs">
+                          <span className="tracking-tighter">★★★★★</span>
+                          <span className="text-[10px] text-gray-400 font-medium">({item.rating_count || 5})</span>
+                        </div>
+                      </div>
+
+                      {/* Bloque de Precios (muy fiel a la foto de referencia) */}
+                      <div className="mt-2.5 pt-2 border-t border-gray-100">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-sm sm:text-base font-extrabold text-gray-900">
+                            {itemPrecio}
+                          </span>
+                          {porcentajeDescuento > 0 && (
+                            <span className="bg-red-600 text-white font-bold text-[10px] px-1 py-0.5 rounded-sm">
+                              -{porcentajeDescuento}%
+                            </span>
+                          )}
+                        </div>
+                        {itemPrecioOriginal && (
+                          <p className="text-[11px] text-gray-400 line-through mt-0.5">
+                            {itemPrecioOriginal}
+                          </p>
+                        )}
+                      </div>
                     </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
 
       </div>
     </div>
