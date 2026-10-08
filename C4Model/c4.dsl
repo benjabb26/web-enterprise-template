@@ -10,14 +10,13 @@ workspace "Aura Enterprise Template" "Arquitectura Monolito Modular - E-commerce
         ecommerce = softwareSystem "Aura Enterprise E-commerce" "Plataforma de ventas online estructurada como monolito modular." {
             
             spa = container "Aplicación Web Frontend" "Proporciona toda la interfaz de usuario y la lógica de negocio." "React, Vite" "Web Browser" {
-    
                 moduloPublico = component "Módulo Storefront (Estático)" "Renderiza la página de Inicio, Nosotros y navegación estática. No requiere base de datos." "React"
                 moduloCatalogo = component "Módulo de Catálogo" "Renderiza la lista de productos, filtros y detalle." "React"
                 moduloCheckout = component "Módulo de Checkout" "Gestiona el estado del carrito y la recolección de datos." "React"
                 moduloAdmin = component "Módulo Panel (Ruta /admin)" "Dashboard privado y formulario de login oculto para el dueño." "React"
                 supabaseClient = component "Cliente Supabase (config/supabase.js)" "Punto único de entrada para el backend." "JavaScript"
-
             }
+            
 
             supabase = container "Backend & Base de Datos (Supabase)" "Gestiona la persistencia de datos, seguridad y API generada automáticamente." "Supabase" "Database" {
                 api = component "API REST (PostgREST)" "Proporciona los endpoints seguros para interactuar con las tablas." "PostgREST"
@@ -34,11 +33,13 @@ workspace "Aura Enterprise Template" "Arquitectura Monolito Modular - E-commerce
 
         # Relaciones - Nivel Contenedor
         
-        cliente -> spa "Visita mediante el navegador"
-        admin -> spa "Inicia sesión segura"
-        spa -> supabase "Lee y escribe datos del catálogo/compras" "HTTPS/JSON"
-        spa -> pasarela "Envía token o redirige para procesar pago" "HTTPS"
-        erp -> supabase "Consume la API REST para sincronizar datos" "HTTPS/JSON"
+        # Relaciones - Interacciones de Usuario con Componentes (Frontend)
+        cliente -> moduloPublico "Navega por Inicio y páginas estáticas"
+        cliente -> moduloCatalogo "Explora catálogo, aplica filtros y selecciona productos"
+        cliente -> moduloCheckout "Agrega productos al carrito y completa la compra"
+        admin -> moduloAdmin "Accede para gestionar productos, pedidos e inventario"
+
+        
 
         # Relaciones - Nivel Componente (Frontend)
         moduloCatalogo -> supabaseClient "Solicita lista y detalle de productos"

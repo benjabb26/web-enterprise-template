@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import productsData from '../../catalog/data/products.json';
+import productsData from '../data/products.json';
 import { siteConfig } from '../../../config/siteConfig.js';
 
 /**
