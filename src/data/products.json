@@ -1,0 +1,602 @@
+[
+  {
+    "id": "prod-001",
+    "name": "Nike Air Force 1 '07",
+    "brand": "Nike",
+    "category": "Urbano",
+    "price": "S/ 469.00",
+    "image": "/images/zapatilla-1.webp",
+    "description": "El clásico ícono del básquetbol adaptado al asfalto urbano, con amortiguación Air encapsulada y cuero impecable.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Nike Air Force 1 '07 (S/ 469.00)."
+  },
+  {
+    "id": "prod-002",
+    "name": "Adidas Ultraboost Light",
+    "brand": "Adidas",
+    "category": "Running",
+    "price": "S/ 649.00",
+    "image": "/images/zapatilla-2.webp",
+    "description": "La versión más ligera de Ultraboost con tecnología Light BOOST para un retorno de energía supremo en cada zancada.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Adidas Ultraboost Light (S/ 649.00)."
+  },
+  {
+    "id": "prod-003",
+    "name": "Air Jordan 1 Retro High OG",
+    "brand": "Jordan",
+    "category": "Edición Limitada",
+    "price": "S/ 689.00",
+    "image": "/images/zapatilla-3.webp",
+    "description": "La silueta legendaria que revolucionó la cultura sneaker, confeccionada con piel genuina de primera calidad.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Air Jordan 1 Retro High OG (S/ 689.00)."
+  },
+  {
+    "id": "prod-004",
+    "name": "New Balance 550",
+    "brand": "New Balance",
+    "category": "Casual",
+    "price": "S/ 459.00",
+    "image": "/images/zapatilla-4.webp",
+    "description": "Tributo al calzado de cancha de los años 80 con un perfil depurado y acabados retro sumamente versátiles.",
+    "customMessage": "Hola, estoy interesado en las zapatillas New Balance 550 (S/ 459.00)."
+  },
+  {
+    "id": "prod-005",
+    "name": "Puma Suede Classic XXI",
+    "brand": "Puma",
+    "category": "Urbano",
+    "price": "S/ 299.00",
+    "image": "/images/zapatilla-5.webp",
+    "description": "La legendaria zapatilla de ante suave que marcó a generaciones del breakdance y el streetwear internacional.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Puma Suede Classic XXI (S/ 299.00)."
+  },
+  {
+    "id": "prod-006",
+    "name": "Asics Gel-Kayano 30",
+    "brand": "Asics",
+    "category": "Running",
+    "price": "S/ 599.00",
+    "image": "/images/zapatilla-6.webp",
+    "description": "Máxima estabilidad adaptativa con el sistema 4D GUIDANCE SYSTEM y amortiguación FF BLAST PLUS ECO.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Asics Gel-Kayano 30 (S/ 599.00)."
+  },
+  {
+    "id": "prod-007",
+    "name": "Converse Chuck 70 Vintage Canvas",
+    "brand": "Converse",
+    "category": "Casual",
+    "price": "S/ 289.00",
+    "image": "/images/zapatilla-7.webp",
+    "description": "Versión premium del clásico Chuck Taylor con lona reforzada de 12 oz y plantilla acolchada OrthoLite.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Converse Chuck 70 Vintage Canvas (S/ 289.00)."
+  },
+  {
+    "id": "prod-008",
+    "name": "Vans Old Skool Classic",
+    "brand": "Vans",
+    "category": "Urbano",
+    "price": "S/ 269.00",
+    "image": "/images/zapatilla-8.webp",
+    "description": "El emblemático modelo skate con la inconfundible franja lateral Sidestripe y suela waffle de caucho vulcanizado.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Vans Old Skool Classic (S/ 269.00)."
+  },
+  {
+    "id": "prod-009",
+    "name": "Nike Air Max 90",
+    "brand": "Nike",
+    "category": "Urbano",
+    "price": "S/ 499.00",
+    "image": "/images/zapatilla-9.webp",
+    "description": "Diseño icónico con amortiguación Max Air visible, revestimientos cosidos y detalles de TPU moldeado.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Nike Air Max 90 (S/ 499.00)."
+  },
+  {
+    "id": "prod-010",
+    "name": "Adidas Stan Smith Lux",
+    "brand": "Adidas",
+    "category": "Vestir",
+    "price": "S/ 389.00",
+    "image": "/images/zapatilla-10.webp",
+    "description": "Silueta minimalista y refinada elaborada con cuero ultrasuave, perfecta para atuendos semi formales impecables.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Adidas Stan Smith Lux (S/ 389.00)."
+  },
+  {
+    "id": "prod-011",
+    "name": "Air Jordan 4 Retro Military Black",
+    "brand": "Jordan",
+    "category": "Edición Limitada",
+    "price": "S/ 690.00",
+    "image": "/images/zapatilla-11.webp",
+    "description": "Diseño de colección con bloques tonales neutros, paneles de malla transpirable y alas de soporte en el mediopié.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Air Jordan 4 Retro Military Black (S/ 690.00)."
+  },
+  {
+    "id": "prod-012",
+    "name": "New Balance 9060",
+    "brand": "New Balance",
+    "category": "Urbano",
+    "price": "S/ 589.00",
+    "image": "/images/zapatilla-12.webp",
+    "description": "Fusión futurista de la serie clásica 99X con estética y2k exuberante y amortiguación ABZORB SBS.",
+    "customMessage": "Hola, estoy interesado en las zapatillas New Balance 9060 (S/ 589.00)."
+  },
+  {
+    "id": "prod-013",
+    "name": "Puma Velocity Nitro 2",
+    "brand": "Puma",
+    "category": "Running",
+    "price": "S/ 429.00",
+    "image": "/images/zapatilla-13.webp",
+    "description": "Entrenadora todoterreno con espuma NITRO reactiva y suela de tracción duradera PUMAGRIP.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Puma Velocity Nitro 2 (S/ 429.00)."
+  },
+  {
+    "id": "prod-014",
+    "name": "Asics Gel-Nimbus 26",
+    "brand": "Asics",
+    "category": "Running",
+    "price": "S/ 629.00",
+    "image": "/images/zapatilla-14.webp",
+    "description": "Amortiguación tipo nube con tecnología PureGEL y cuello de punto suave para rodajes de larga distancia.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Asics Gel-Nimbus 26 (S/ 629.00)."
+  },
+  {
+    "id": "prod-015",
+    "name": "Converse Run Star Motion",
+    "brand": "Converse",
+    "category": "Urbano",
+    "price": "S/ 399.00",
+    "image": "/images/zapatilla-15.webp",
+    "description": "Plataforma ondulada vanguardista con espuma CX para una pisada liviana y expresión estilística audaz.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Converse Run Star Motion (S/ 399.00)."
+  },
+  {
+    "id": "prod-016",
+    "name": "Vans Sk8-Hi Pro",
+    "brand": "Vans",
+    "category": "Urbano",
+    "price": "S/ 319.00",
+    "image": "/images/zapatilla-16.webp",
+    "description": "Caña alta acolchada para máxima protección de tobillo con refuerzos DURACAP resistentes al desgaste diario.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Vans Sk8-Hi Pro (S/ 319.00)."
+  },
+  {
+    "id": "prod-017",
+    "name": "Nike Pegasus 40",
+    "brand": "Nike",
+    "category": "Running",
+    "price": "S/ 479.00",
+    "image": "/images/zapatilla-17.webp",
+    "description": "El caballo de batalla con soporte neutral, doble unidad Zoom Air y ajuste optimizado en el empeine.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Nike Pegasus 40 (S/ 479.00)."
+  },
+  {
+    "id": "prod-018",
+    "name": "Adidas Samba OG",
+    "brand": "Adidas",
+    "category": "Casual",
+    "price": "S/ 379.00",
+    "image": "/images/zapatilla-18.webp",
+    "description": "Nacida para el fútbol sala y consagrada como el ícono de moda imprescindible del armario urbano mundial.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Adidas Samba OG (S/ 379.00)."
+  },
+  {
+    "id": "prod-019",
+    "name": "Air Jordan 3 Retro White Cement",
+    "brand": "Jordan",
+    "category": "Edición Limitada",
+    "price": "S/ 680.00",
+    "image": "/images/zapatilla-19.webp",
+    "description": "El diseño cumbre de Tinker Hatfield con el icónico estampado Elephant Print y detalles Reimagined.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Air Jordan 3 Retro White Cement (S/ 680.00)."
+  },
+  {
+    "id": "prod-020",
+    "name": "New Balance 2002R",
+    "brand": "New Balance",
+    "category": "Casual",
+    "price": "S/ 529.00",
+    "image": "/images/zapatilla-20.webp",
+    "description": "Estilo técnico de principios de los 2000 renovado con empeine de malla y ante de excelente resistencia.",
+    "customMessage": "Hola, estoy interesado en las zapatillas New Balance 2002R (S/ 529.00)."
+  },
+  {
+    "id": "prod-021",
+    "name": "Puma Palermo Leather",
+    "brand": "Puma",
+    "category": "Casual",
+    "price": "S/ 329.00",
+    "image": "/images/zapatilla-21.webp",
+    "description": "Herencia de la cultura de terrazas europeas con puntera en T de ante y suela de goma retro caramelo.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Puma Palermo Leather (S/ 329.00)."
+  },
+  {
+    "id": "prod-022",
+    "name": "Asics GT-2000 12",
+    "brand": "Asics",
+    "category": "Deportivo",
+    "price": "S/ 499.00",
+    "image": "/images/zapatilla-22.webp",
+    "description": "Zapatilla de estabilidad ligera y transiciones suaves diseñada para corredores con sobrepronación.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Asics GT-2000 12 (S/ 499.00)."
+  },
+  {
+    "id": "prod-023",
+    "name": "Converse Jack Purcell Leather",
+    "brand": "Converse",
+    "category": "Vestir",
+    "price": "S/ 349.00",
+    "image": "/images/zapatilla-23.webp",
+    "description": "Elegancia sutil con la clásica sonrisa azul en la puntera y exterior de cuero de brillo suave.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Converse Jack Purcell Leather (S/ 349.00)."
+  },
+  {
+    "id": "prod-024",
+    "name": "Vans Authentic Core Classics",
+    "brand": "Vans",
+    "category": "Casual",
+    "price": "S/ 220.00",
+    "image": "/images/zapatilla-24.webp",
+    "description": "El origen de la marca californiana, simple y auténtica, con perfil bajo de lona resistente y ojales metálicos.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Vans Authentic Core Classics (S/ 220.00)."
+  },
+  {
+    "id": "prod-025",
+    "name": "Nike Dunk Low Retro",
+    "brand": "Nike",
+    "category": "Urbano",
+    "price": "S/ 479.00",
+    "image": "/images/zapatilla-25.webp",
+    "description": "El fenómeno del streetwear universitario con bloques de color vibrantes y suela de perfil bajo adherente.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Nike Dunk Low Retro (S/ 479.00)."
+  },
+  {
+    "id": "prod-026",
+    "name": "Adidas Gazelle Indoor",
+    "brand": "Adidas",
+    "category": "Casual",
+    "price": "S/ 399.00",
+    "image": "/images/zapatilla-26.webp",
+    "description": "Silueta baja con ante premium, suela de caucho translúcida y las tres bandas dentadas en contraste.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Adidas Gazelle Indoor (S/ 399.00)."
+  },
+  {
+    "id": "prod-027",
+    "name": "Air Jordan 11 Retro Concord",
+    "brand": "Jordan",
+    "category": "Edición Limitada",
+    "price": "S/ 690.00",
+    "image": "/images/zapatilla-27.webp",
+    "description": "El charol brillante más icónico de la historia del básquetbol con suela traslúcida y placa de fibra de carbono.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Air Jordan 11 Retro Concord (S/ 690.00)."
+  },
+  {
+    "id": "prod-028",
+    "name": "New Balance 574 Core",
+    "brand": "New Balance",
+    "category": "Casual",
+    "price": "S/ 329.00",
+    "image": "/images/zapatilla-28.webp",
+    "description": "La zapatilla todoterreno de horma espaciosa y tecnología ENCAP que nunca pasa de moda.",
+    "customMessage": "Hola, estoy interesado en las zapatillas New Balance 574 Core (S/ 329.00)."
+  },
+  {
+    "id": "prod-029",
+    "name": "Puma Deviate Nitro Elite 2",
+    "brand": "Puma",
+    "category": "Running",
+    "price": "S/ 610.00",
+    "image": "/images/zapatilla-29.webp",
+    "description": "Zapatilla de competición para maratón con placa interna de carbono INNOPLATE y espuma ultraliviana NITRO Elite.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Puma Deviate Nitro Elite 2 (S/ 610.00)."
+  },
+  {
+    "id": "prod-030",
+    "name": "Asics Gel-NYC",
+    "brand": "Asics",
+    "category": "Urbano",
+    "price": "S/ 489.00",
+    "image": "/images/zapatilla-30.webp",
+    "description": "Inspirada en el estilo dinámico de la Gran Manzana, combinando la parte superior GEL-NIMBUS 3 con tecnología GEL-CUMULUS 16.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Asics Gel-NYC (S/ 489.00)."
+  },
+  {
+    "id": "prod-031",
+    "name": "Converse One Star Pro",
+    "brand": "Converse",
+    "category": "Urbano",
+    "price": "S/ 299.00",
+    "image": "/images/zapatilla-31.webp",
+    "description": "Ante resistente con la icónica estrella troquelada, diseñada originalmente para las tablas de skate.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Converse One Star Pro (S/ 299.00)."
+  },
+  {
+    "id": "prod-032",
+    "name": "Vans Knu Skool Chunky",
+    "brand": "Vans",
+    "category": "Urbano",
+    "price": "S/ 349.00",
+    "image": "/images/zapatilla-32.webp",
+    "description": "Reedición noventera acolchada con lengüeta abullonada y Sidestripe en relieve tridimensional de gran impacto.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Vans Knu Skool Chunky (S/ 349.00)."
+  },
+  {
+    "id": "prod-033",
+    "name": "Nike Invincible 3",
+    "brand": "Nike",
+    "category": "Running",
+    "price": "S/ 659.00",
+    "image": "/images/zapatilla-33.webp",
+    "description": "Amortiguación ZoomX maximalista para proteger las articulaciones y brindar una pisada elástica ultrasuave.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Nike Invincible 3 (S/ 659.00)."
+  },
+  {
+    "id": "prod-034",
+    "name": "Adidas Superstar Primeblue",
+    "brand": "Adidas",
+    "category": "Casual",
+    "price": "S/ 359.00",
+    "image": "/images/zapatilla-34.webp",
+    "description": "La legendaria puntera de goma 'Shell Toe' combinada con materiales reciclados y un confort urbano perdurable.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Adidas Superstar Primeblue (S/ 359.00)."
+  },
+  {
+    "id": "prod-035",
+    "name": "Air Jordan 5 Retro Fire Red",
+    "brand": "Jordan",
+    "category": "Edición Limitada",
+    "price": "S/ 670.00",
+    "image": "/images/zapatilla-35.webp",
+    "description": "Inspirada en los cazas de la Segunda Guerra Mundial, con dientes de tiburón en la suela y lengüeta reflectante 3M.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Air Jordan 5 Retro Fire Red (S/ 670.00)."
+  },
+  {
+    "id": "prod-036",
+    "name": "New Balance 1906R",
+    "brand": "New Balance",
+    "category": "Deportivo",
+    "price": "S/ 569.00",
+    "image": "/images/zapatilla-36.webp",
+    "description": "Silueta técnica que rinde homenaje a la estética de los corredores de los años 2000 con soporte N-ergy.",
+    "customMessage": "Hola, estoy interesado en las zapatillas New Balance 1906R (S/ 569.00)."
+  },
+  {
+    "id": "prod-037",
+    "name": "Puma Slipstream Heritage",
+    "brand": "Puma",
+    "category": "Urbano",
+    "price": "S/ 369.00",
+    "image": "/images/zapatilla-37.webp",
+    "description": "Evolución de un clásico del parqué de los 80 convertida en una declaración de moda retro vanguardista.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Puma Slipstream Heritage (S/ 369.00)."
+  },
+  {
+    "id": "prod-038",
+    "name": "Asics Novablast 4",
+    "brand": "Asics",
+    "category": "Running",
+    "price": "S/ 549.00",
+    "image": "/images/zapatilla-38.webp",
+    "description": "Efecto trampolín propulsivo gracias a la geometría de la suela y la innovadora espuma FF BLAST PLUS ECO.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Asics Novablast 4 (S/ 549.00)."
+  },
+  {
+    "id": "prod-039",
+    "name": "Converse Chuck Taylor All Star Move",
+    "brand": "Converse",
+    "category": "Casual",
+    "price": "S/ 319.00",
+    "image": "/images/zapatilla-39.webp",
+    "description": "Plataforma ultraligera con líneas dinámicas y curvadas que ofrecen altura sin añadir peso extra.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Converse Chuck Taylor All Star Move (S/ 319.00)."
+  },
+  {
+    "id": "prod-040",
+    "name": "Vans Slip-On Checkerboard",
+    "brand": "Vans",
+    "category": "Casual",
+    "price": "S/ 249.00",
+    "image": "/images/zapatilla-40.webp",
+    "description": "El estampado a cuadros damero más reconocido del mundo, sin cordones y de calce rápido para un look desenfadado.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Vans Slip-On Checkerboard (S/ 249.00)."
+  },
+  {
+    "id": "prod-041",
+    "name": "Nike Vomero 5",
+    "brand": "Nike",
+    "category": "Deportivo",
+    "price": "S/ 569.00",
+    "image": "/images/zapatilla-41.webp",
+    "description": "Diseño en capas con malla transpirable, detalles reflectantes y amortiguación Zoom Air ultrasuave.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Nike Vomero 5 (S/ 569.00)."
+  },
+  {
+    "id": "prod-042",
+    "name": "Adidas Forum Low Classic",
+    "brand": "Adidas",
+    "category": "Urbano",
+    "price": "S/ 379.00",
+    "image": "/images/zapatilla-42.webp",
+    "description": "Herencia del básquetbol ochentero con correa autoadherente en el tobillo y cuero granulado de gran prestancia.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Adidas Forum Low Classic (S/ 379.00)."
+  },
+  {
+    "id": "prod-043",
+    "name": "Air Jordan 1 Low Travis Scott Style",
+    "brand": "Jordan",
+    "category": "Edición Limitada",
+    "price": "S/ 690.00",
+    "image": "/images/zapatilla-43.webp",
+    "description": "Edición codiciada con tonos tierra oliva, Swoosh invertido característico y materiales de lujo absoluto.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Air Jordan 1 Low Travis Scott Style (S/ 690.00)."
+  },
+  {
+    "id": "prod-044",
+    "name": "New Balance Fresh Foam X 1080v13",
+    "brand": "New Balance",
+    "category": "Running",
+    "price": "S/ 629.00",
+    "image": "/images/zapatilla-44.webp",
+    "description": "La máxima expresión de comodidad para corredores con espuma Fresh Foam X de amortiguación sedosa.",
+    "customMessage": "Hola, estoy interesado en las zapatillas New Balance Fresh Foam X 1080v13 (S/ 629.00)."
+  },
+  {
+    "id": "prod-045",
+    "name": "Puma CA Pro Classic",
+    "brand": "Puma",
+    "category": "Vestir",
+    "price": "S/ 339.00",
+    "image": "/images/zapatilla-45.webp",
+    "description": "Líneas depuradas inspiradas en la Costa Oeste californiana, elegantes y fáciles de combinar con trajes casuales.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Puma CA Pro Classic (S/ 339.00)."
+  },
+  {
+    "id": "prod-046",
+    "name": "Asics Gel-1130",
+    "brand": "Asics",
+    "category": "Deportivo",
+    "price": "S/ 419.00",
+    "image": "/images/zapatilla-46.webp",
+    "description": "Homenaje a la serie GEL-1000 de finales de los 2000 con inserciones GEL amortiguadoras y diseño transpirable.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Asics Gel-1130 (S/ 419.00)."
+  },
+  {
+    "id": "prod-047",
+    "name": "Converse Weapon Ox",
+    "brand": "Converse",
+    "category": "Deportivo",
+    "price": "S/ 389.00",
+    "image": "/images/zapatilla-47.webp",
+    "description": "Regreso de una leyenda del baloncesto profesional adaptada en caña baja con piel duradera y plantilla acolchada.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Converse Weapon Ox (S/ 389.00)."
+  },
+  {
+    "id": "prod-048",
+    "name": "Vans Era 59 Leather Accent",
+    "brand": "Vans",
+    "category": "Vestir",
+    "price": "S/ 279.00",
+    "image": "/images/zapatilla-48.webp",
+    "description": "Lona resistente de doble puntada combinada con detalles refinados de piel en el talón y forro interior suave.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Vans Era 59 Leather Accent (S/ 279.00)."
+  },
+  {
+    "id": "prod-049",
+    "name": "Nike ZoomX Vaporfly Next% 3",
+    "brand": "Nike",
+    "category": "Running",
+    "price": "S/ 690.00",
+    "image": "/images/zapatilla-49.webp",
+    "description": "La superzapatilla de competición para maratón de élite con placa de carbono Flyplate de longitud completa.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Nike ZoomX Vaporfly Next% 3 (S/ 690.00)."
+  },
+  {
+    "id": "prod-050",
+    "name": "Adidas Spezial Originals",
+    "brand": "Adidas",
+    "category": "Vestir",
+    "price": "S/ 419.00",
+    "image": "/images/zapatilla-50.webp",
+    "description": "Diseño clásico de balonmano en ante aterciopelado con puntera reforzada y suela de caramelo de alta distinción.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Adidas Spezial Originals (S/ 419.00)."
+  },
+  {
+    "id": "prod-051",
+    "name": "Air Jordan 6 Retro Infrared",
+    "brand": "Jordan",
+    "category": "Edición Limitada",
+    "price": "S/ 680.00",
+    "image": "/images/zapatilla-51.webp",
+    "description": "La silueta con la que MJ conquistó su primer campeonato en 1991, vestida con el legendario colorway Infrared.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Air Jordan 6 Retro Infrared (S/ 680.00)."
+  },
+  {
+    "id": "prod-052",
+    "name": "New Balance 327 Vintage",
+    "brand": "New Balance",
+    "category": "Casual",
+    "price": "S/ 389.00",
+    "image": "/images/zapatilla-52.webp",
+    "description": "Silueta geométrica angular con el logotipo 'N' sobredimensionado y suela envolvente inspirada en el trail running.",
+    "customMessage": "Hola, estoy interesado en las zapatillas New Balance 327 Vintage (S/ 389.00)."
+  },
+  {
+    "id": "prod-053",
+    "name": "Puma Fast-R Nitro Elite",
+    "brand": "Puma",
+    "category": "Deportivo",
+    "price": "S/ 670.00",
+    "image": "/images/zapatilla-53.webp",
+    "description": "Diseño de suela partida revolucionaria con placa de fibra de carbono visible PWRPLATE y peso pluma.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Puma Fast-R Nitro Elite (S/ 670.00)."
+  },
+  {
+    "id": "prod-054",
+    "name": "Asics Metaspeed Sky Paris",
+    "brand": "Asics",
+    "category": "Deportivo",
+    "price": "S/ 690.00",
+    "image": "/images/zapatilla-54.webp",
+    "description": "Desarrollada para corredores que alargan su zancada para alcanzar el podio con amortiguación FF TURBO PLUS.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Asics Metaspeed Sky Paris (S/ 690.00)."
+  },
+  {
+    "id": "prod-055",
+    "name": "Converse Pro Leather Gold Standard",
+    "brand": "Converse",
+    "category": "Vestir",
+    "price": "S/ 369.00",
+    "image": "/images/zapatilla-55.webp",
+    "description": "Cuero suave de corte impecable con el logotipo Star Chevron dorado lateral y amortiguación SmartFOAM.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Converse Pro Leather Gold Standard (S/ 369.00)."
+  },
+  {
+    "id": "prod-056",
+    "name": "Vans Half Cab 33 DX",
+    "brand": "Vans",
+    "category": "Urbano",
+    "price": "S/ 359.00",
+    "image": "/images/zapatilla-56.webp",
+    "description": "La legendaria silueta mid-top diseñada por Steve Caballero con parche bordado icónico y ante premium.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Vans Half Cab 33 DX (S/ 359.00)."
+  },
+  {
+    "id": "prod-057",
+    "name": "Nike Cortez Classic Leather",
+    "brand": "Nike",
+    "category": "Casual",
+    "price": "S/ 349.00",
+    "image": "/images/zapatilla-57.webp",
+    "description": "La primera obra maestra de Bill Bowerman con entresuela de cuña de espuma y suela con diseño de espiga.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Nike Cortez Classic Leather (S/ 349.00)."
+  },
+  {
+    "id": "prod-058",
+    "name": "Adidas Adizero Adios Pro 3",
+    "brand": "Adidas",
+    "category": "Running",
+    "price": "S/ 680.00",
+    "image": "/images/zapatilla-58.webp",
+    "description": "Varillas de carbono ENERGYRODS 2.0 que reducen la pérdida de energía para conquistar plusmarcas personales.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Adidas Adizero Adios Pro 3 (S/ 680.00)."
+  },
+  {
+    "id": "prod-059",
+    "name": "New Balance 990v6 Made in USA",
+    "brand": "New Balance",
+    "category": "Edición Limitada",
+    "price": "S/ 690.00",
+    "image": "/images/zapatilla-59.webp",
+    "description": "La cúspide del calzado artesanal estadounidense con amortiguación FuelCell y materiales de estricta selección.",
+    "customMessage": "Hola, estoy interesado en las zapatillas New Balance 990v6 Made in USA (S/ 690.00)."
+  },
+  {
+    "id": "prod-060",
+    "name": "Puma Army Trainer",
+    "brand": "Puma",
+    "category": "Vestir",
+    "price": "S/ 329.00",
+    "image": "/images/zapatilla-60.webp",
+    "description": "Réplica del calzado de entrenamiento militar alemán de los años 70 en cuero blanco con puntera en ante gris.",
+    "customMessage": "Hola, estoy interesado en las zapatillas Puma Army Trainer (S/ 329.00)."
+  }
+]
