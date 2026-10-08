@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import productsData from '../data/products.json';
+import { catalogService } from '../services/catalogService';
 
 // Fallbacks de alta definición para calzado en caso de que assets no carguen
 const FALLBACK_IMAGES = [
@@ -27,6 +27,11 @@ const parsePrice = (priceStr) => {
 export const ProductGrid = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Estados de catálogo con Supabase
+  const [productos, setProductos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
+
   // Estados de filtros multi-selección (arreglos)
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
@@ -39,6 +44,31 @@ export const ProductGrid = () => {
 
   const categories = ['Running', 'Casual', 'Vestir', 'Urbano', 'Deportivo', 'Edición Limitada'];
   const brands = ['Nike', 'Adidas', 'Puma', 'New Balance', 'Jordan', 'Asics', 'Converse', 'Vans'];
+
+  // Carga asíncrona de productos al montar el componente
+  useEffect(() => {
+    let isMounted = true;
+    setCargando(true);
+    setError(null);
+
+    catalogService.getProducts()
+      .then((data) => {
+        if (isMounted) {
+          setProductos(data || []);
+          setCargando(false);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setError(err?.message || 'Error al cargar el catálogo');
+          setCargando(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Sincronización bidireccional con Query Params (?categoria=... & ?marca=...)
   useEffect(() => {
@@ -68,27 +98,34 @@ export const ProductGrid = () => {
     (searchTerm.trim() ? 1 : 0);
 
   // Filtrado de productos simultáneo con soporte multi-selección
-  const filteredProducts = productsData.filter((product) => {
+  const filteredProducts = productos.filter((product) => {
+    const prodCategory = product.categoria || product.category || '';
+    const prodBrand = product.marca || product.brand || '';
+    const prodName = product.nombre || product.name || '';
+    const prodPrice = product.precio_actual !== undefined && product.precio_actual !== null
+      ? product.precio_actual
+      : product.price;
+
     // Categoría: si no hay seleccionadas, pasan todas. Si hay seleccionadas, debe coincidir con alguna.
     const matchCategory =
       selectedCategories.length === 0 ||
-      (product.category && selectedCategories.some(c => c.toLowerCase() === product.category.toLowerCase()));
+      (prodCategory && selectedCategories.some(c => c.toLowerCase() === prodCategory.toLowerCase()));
 
     // Marca: si no hay seleccionadas, pasan todas. Si hay seleccionadas, debe coincidir con alguna (ej. Nike O Adidas).
     const matchBrand =
       selectedBrands.length === 0 ||
-      (product.brand && selectedBrands.some(b => b.toLowerCase() === product.brand.toLowerCase()));
+      (prodBrand && selectedBrands.some(b => b.toLowerCase() === prodBrand.toLowerCase()));
 
     // Precio: slider estricto
-    const numericPrice = parsePrice(product.price);
+    const numericPrice = parsePrice(prodPrice);
     const matchPrice = numericPrice <= maxPrice;
 
     // Buscador de texto reactivo
     const matchSearch =
       !searchTerm.trim() ||
-      product.name.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
-      (product.brand && product.brand.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||
-      (product.category && product.category.toLowerCase().includes(searchTerm.toLowerCase().trim()));
+      prodName.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
+      (prodBrand && prodBrand.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||
+      (prodCategory && prodCategory.toLowerCase().includes(searchTerm.toLowerCase().trim()));
 
     return matchCategory && matchBrand && matchPrice && matchSearch;
   });
@@ -169,7 +206,7 @@ export const ProductGrid = () => {
       aria-label="Catálogo de productos de calzado"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Cabecera del Catálogo */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 sm:mb-10 pb-4 sm:pb-6 border-b border-gray-200 gap-4">
           <div>
@@ -182,9 +219,11 @@ export const ProductGrid = () => {
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <p className="text-xs sm:text-sm text-gray-500 font-medium">
-              {filteredProducts.length > 0
-                ? `Mostrando ${indexOfFirstProduct + 1} - ${Math.min(indexOfLastProduct, filteredProducts.length)} de ${filteredProducts.length} modelos`
-                : 'No se encontraron modelos con los filtros seleccionados'}
+              {cargando
+                ? ''
+                : filteredProducts.length > 0
+                  ? `Mostrando ${indexOfFirstProduct + 1} - ${Math.min(indexOfLastProduct, filteredProducts.length)} de ${filteredProducts.length} modelos`
+                  : 'No se encontraron modelos con los filtros seleccionados'}
             </p>
             {activeFiltersCount > 0 && (
               <button
@@ -229,7 +268,7 @@ export const ProductGrid = () => {
 
         {/* Layout Asimétrico: Sidebar (1 Columna) + Catálogo (3 Columnas) con Flujo Natural */}
         <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6 lg:gap-10 items-start">
-          
+
           {/* Columna Izquierda / Acordeón Plegable en Móvil: Sidebar de Filtros UI */}
           <aside
             id="catalog-filters-sidebar"
@@ -315,11 +354,10 @@ export const ProductGrid = () => {
                       key={brand}
                       type="button"
                       onClick={() => handleToggleBrand(brand)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all inline-flex items-center gap-1.5 touch-manipulation cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/20'
-                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-100'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all inline-flex items-center gap-1.5 touch-manipulation cursor-pointer ${isSelected
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/20'
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-100'
+                        }`}
                       aria-pressed={isSelected}
                     >
                       {isSelected && (
@@ -363,20 +401,18 @@ export const ProductGrid = () => {
                       key={cat}
                       type="button"
                       onClick={() => handleToggleCategory(cat)}
-                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs cursor-pointer select-none transition-colors border text-left ${
-                        isSelected
-                          ? 'bg-emerald-50 text-emerald-900 border-emerald-200 font-bold'
-                          : 'text-gray-700 hover:bg-gray-50 border-transparent'
-                      }`}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs cursor-pointer select-none transition-colors border text-left ${isSelected
+                        ? 'bg-emerald-50 text-emerald-900 border-emerald-200 font-bold'
+                        : 'text-gray-700 hover:bg-gray-50 border-transparent'
+                        }`}
                       aria-pressed={isSelected}
                     >
                       <span className="flex items-center gap-2">
                         <span
-                          className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
-                            isSelected
-                              ? 'bg-emerald-600 border-emerald-600 text-white'
-                              : 'bg-white border-gray-300'
-                          }`}
+                          className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${isSelected
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'bg-white border-gray-300'
+                            }`}
                         >
                           {isSelected && (
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -496,10 +532,48 @@ export const ProductGrid = () => {
               </div>
             )}
 
-            {currentProducts.length > 0 ? (
+            {cargando ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm flex flex-col items-center justify-center min-h-[350px]">
+                <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-base font-medium text-gray-600">Cargando catálogo...</p>
+              </div>
+            ) : error ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-red-100 shadow-sm">
+                <span className="text-4xl">⚠️</span>
+                <h3 className="mt-3 text-lg font-bold text-gray-900">Error al cargar el catálogo</h3>
+                <p className="mt-1 text-sm text-red-500 max-w-md mx-auto">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCargando(true);
+                    setError(null);
+                    catalogService.getProducts()
+                      .then((data) => {
+                        setProductos(data || []);
+                        setCargando(false);
+                      })
+                      .catch((err) => {
+                        setError(err?.message || 'Error al cargar el catálogo');
+                        setCargando(false);
+                      });
+                  }}
+                  className="mt-5 min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 active:scale-95 transition-all touch-manipulation cursor-pointer"
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : currentProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {currentProducts.map((product, index) => {
                   const globalIndex = indexOfFirstProduct + index;
+                  const nombre = product.nombre || product.name;
+                  const precioActual = product.precio_actual || product.price;
+                  const displayPrice = typeof precioActual === 'number'
+                    ? `S/ ${precioActual.toFixed(2)}`
+                    : precioActual;
+                  const imagenUrl = product.imagen_url || product.image;
+                  const categoria = product.categoria || product.category || 'Original';
+                  const descripcion = product.descripcion || product.description;
 
                   return (
                     <article
@@ -510,11 +584,11 @@ export const ProductGrid = () => {
                       <Link
                         to={`/producto/${product.id}`}
                         className="block overflow-hidden relative aspect-square bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 touch-manipulation"
-                        aria-label={`Ver detalles de ${product.name}`}
+                        aria-label={`Ver detalles de ${nombre}`}
                       >
                         <img
-                          src={product.image}
-                          alt={product.name}
+                          src={imagenUrl}
+                          alt={nombre}
                           onError={(e) => handleImageError(e, globalIndex)}
                           className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out"
                           loading="lazy"
@@ -523,13 +597,13 @@ export const ProductGrid = () => {
                         {/* Badge de Precio Estilo Glassmorphism */}
                         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full shadow-sm border border-white/60">
                           <span className="text-sm font-extrabold text-gray-900">
-                            {product.price}
+                            {displayPrice}
                           </span>
                         </div>
 
                         {/* Tag de Colección */}
                         <div className="absolute bottom-3 left-3 bg-gray-900/80 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-md text-[11px] font-medium tracking-wide">
-                          {product.category || 'Original'}
+                          {categoria}
                         </div>
                       </Link>
 
@@ -542,11 +616,11 @@ export const ProductGrid = () => {
                             className="block group/title focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded touch-manipulation"
                           >
                             <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover/title:text-emerald-700 transition-colors leading-snug line-clamp-1">
-                              {product.name}
+                              {nombre}
                             </h3>
                           </Link>
                           <p className="mt-2 text-xs sm:text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                            {product.description}
+                            {descripcion}
                           </p>
                         </div>
 
@@ -555,7 +629,7 @@ export const ProductGrid = () => {
                           <Link
                             to={`/producto/${product.id}`}
                             className="w-full min-h-[48px] px-4 py-3 inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 hover:bg-gray-800 active:scale-95 text-white font-semibold text-sm shadow-sm hover:shadow transition-all duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 touch-manipulation cursor-pointer"
-                            aria-label={`Ver más detalles de ${product.name}`}
+                            aria-label={`Ver más detalles de ${nombre}`}
                           >
                             <span>Ver más</span>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -589,7 +663,7 @@ export const ProductGrid = () => {
             )}
 
             {/* Controles de Paginación UI Premium (Estilo iOS Píldora) */}
-            {totalPages > 1 && (
+            {!cargando && totalPages > 1 && (
               <nav
                 className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-200/80 flex flex-wrap items-center justify-center gap-2 sm:gap-3"
                 aria-label="Paginación del catálogo"
@@ -599,11 +673,10 @@ export const ProductGrid = () => {
                   type="button"
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-all touch-manipulation ${
-                    currentPage === 1
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
-                      : 'bg-white hover:bg-gray-100 text-gray-700 shadow-sm border border-gray-200 active:scale-95 cursor-pointer'
-                  }`}
+                  className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-all touch-manipulation ${currentPage === 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
+                    : 'bg-white hover:bg-gray-100 text-gray-700 shadow-sm border border-gray-200 active:scale-95 cursor-pointer'
+                    }`}
                   aria-label="Ir a página anterior"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -619,11 +692,10 @@ export const ProductGrid = () => {
                       key={pageNumber}
                       type="button"
                       onClick={() => handlePageChange(pageNumber)}
-                      className={`min-h-[44px] min-w-[44px] px-3.5 rounded-xl text-sm font-bold transition-all touch-manipulation cursor-pointer ${
-                        currentPage === pageNumber
-                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 scale-105'
-                          : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 hover:border-gray-300 active:bg-gray-50'
-                      }`}
+                      className={`min-h-[44px] min-w-[44px] px-3.5 rounded-xl text-sm font-bold transition-all touch-manipulation cursor-pointer ${currentPage === pageNumber
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 scale-105'
+                        : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 hover:border-gray-300 active:bg-gray-50'
+                        }`}
                       aria-current={currentPage === pageNumber ? 'page' : undefined}
                       aria-label={`Página ${pageNumber}`}
                     >
@@ -637,11 +709,10 @@ export const ProductGrid = () => {
                   type="button"
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-all touch-manipulation ${
-                    currentPage === totalPages
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
-                      : 'bg-white hover:bg-gray-100 text-gray-700 shadow-sm border border-gray-200 active:scale-95 cursor-pointer'
-                  }`}
+                  className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-all touch-manipulation ${currentPage === totalPages
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
+                    : 'bg-white hover:bg-gray-100 text-gray-700 shadow-sm border border-gray-200 active:scale-95 cursor-pointer'
+                    }`}
                   aria-label="Ir a página siguiente"
                 >
                   <span>Siguiente</span>
