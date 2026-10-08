@@ -1,4 +1,4 @@
-import { siteConfig } from '../data/siteConfig.js';
+import { siteConfig } from '../../config/siteConfig.js';
 
 /**
  * Limpia y normaliza un número de teléfono eliminando cualquier carácter no numérico

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { siteConfig } from '../../data/siteConfig.js';
-import { generateWhatsAppLink } from '../../utils/whatsapp.js';
+import { siteConfig } from '../../config/siteConfig.js';
+import { generateWhatsAppLink } from '../utils/whatsapp.js';
 
 /**
  * Ícono vectorial SVG oficial de WhatsApp optimizado para contraste en fondos oscuros.

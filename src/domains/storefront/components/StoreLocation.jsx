@@ -1,6 +1,6 @@
 import React from 'react';
-import { siteConfig } from '../../data/siteConfig.js';
-import { generateWhatsAppLink } from '../../utils/whatsapp.js';
+import { siteConfig } from '../../../config/siteConfig.js';
+import { generateWhatsAppLink } from '../../../core/utils/whatsapp.js';
 
 /**
  * Componente StoreLocation (Sección Dónde Encontrarnos)

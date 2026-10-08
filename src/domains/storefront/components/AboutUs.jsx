@@ -1,5 +1,5 @@
 import React from 'react';
-import { siteConfig } from '../../data/siteConfig.js';
+import { siteConfig } from '../../../config/siteConfig.js';
 
 /**
  * Componente AboutUs (Sección Nosotros).

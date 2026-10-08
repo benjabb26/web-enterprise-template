@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { siteConfig } from '../../data/siteConfig.js';
+import { siteConfig } from '../../../config/siteConfig.js';
 
 /**
  * Componente TermsAndConditions (Términos y Condiciones Generales de Venta)

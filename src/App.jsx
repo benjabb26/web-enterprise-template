@@ -1,16 +1,16 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/common/Navbar.jsx';
-import Footer from './components/common/Footer.jsx';
-import HeroSection from './components/sections/HeroSection.jsx';
-import AboutUs from './components/sections/AboutUs.jsx';
-import ProductGrid from './components/sections/ProductGrid.jsx';
-import ProductDetail from './components/sections/ProductDetail.jsx';
-import StoreLocation from './components/sections/StoreLocation.jsx';
-import PrivacyPolicy from './components/legal/PrivacyPolicy.jsx';
-import TermsAndConditions from './components/legal/TermsAndConditions.jsx';
-import CookiePolicy from './components/legal/CookiePolicy.jsx';
-import CookieBanner from './components/legal/CookieBanner.jsx';
+import Navbar from './core/components/Navbar.jsx';
+import Footer from './core/components/Footer.jsx';
+import HeroSection from './domains/storefront/components/HeroSection.jsx';
+import AboutUs from './domains/storefront/components/AboutUs.jsx';
+import ProductGrid from './domains/storefront/components/ProductGrid.jsx';
+import ProductDetail from './domains/storefront/components/ProductDetail.jsx';
+import StoreLocation from './domains/storefront/components/StoreLocation.jsx';
+import PrivacyPolicy from './domains/storefront/pages/PrivacyPolicy.jsx';
+import TermsAndConditions from './domains/storefront/pages/TermsAndConditions.jsx';
+import CookiePolicy from './domains/storefront/pages/CookiePolicy.jsx';
+import CookieBanner from './domains/storefront/pages/CookieBanner.jsx';
 
 /**
  * Vista de Inicio (Home) con Portada, sección Nosotros y Ubicación oficial.

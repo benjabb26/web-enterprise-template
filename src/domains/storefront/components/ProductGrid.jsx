@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import productsData from '../../data/products.json';
+import productsData from '../../catalog/data/products.json';
 
 // Fallbacks de alta definición para calzado en caso de que assets no carguen
 const FALLBACK_IMAGES = [

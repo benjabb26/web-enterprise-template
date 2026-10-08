@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { siteConfig } from '../../data/siteConfig.js';
-import { generateWhatsAppLink } from '../../utils/whatsapp.js';
+import { siteConfig } from '../../config/siteConfig.js';
+import { generateWhatsAppLink } from '../utils/whatsapp.js';
 
 /**
  * Ícono vectorial SVG oficial de WhatsApp con accesibilidad.
