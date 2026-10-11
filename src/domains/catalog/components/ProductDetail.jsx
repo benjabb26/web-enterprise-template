@@ -1,25 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import catalogService from '../services/catalogService';
-import { siteConfig } from '../../../config/siteConfig.js';
 
 // Fallback de alta resolución para calzado
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=1000';
-
-/**
- * Ícono vectorial SVG de WhatsApp
- */
-const WhatsAppIcon = ({ className = 'w-5 h-5 shrink-0' }) => (
-  <svg
-    className={className}
-    fill="currentColor"
-    viewBox="0 0 24 24"
-    aria-hidden="true"
-    focusable="false"
-  >
-    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-  </svg>
-);
 
 /**
  * Formatea precio numérico o string a convención monetaria formal "S/ xx.xx".
@@ -40,12 +24,14 @@ const formatPrice = (val) => {
  */
 export const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   // Estados del ciclo de vida del producto
   const [producto, setProducto] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [tallaSeleccionada, setTallaSeleccionada] = useState(null);
+  const [cantidad, setCantidad] = useState(1);
   const [productosSimilares, setProductosSimilares] = useState([]);
 
   // Referencia y funciones de desplazamiento para el carrusel de productos similares
@@ -67,6 +53,7 @@ export const ProductDetail = () => {
     setCargando(true);
     setError(null);
     setTallaSeleccionada(null);
+    setCantidad(1);
     setProductosSimilares([]);
 
     catalogService.getProductById(id)
@@ -105,23 +92,32 @@ export const ProductDetail = () => {
     };
   }, [id]);
 
-  // Manejador de compra por WhatsApp
-  const handleWhatsAppClick = () => {
+  // Manejador de compra directa hacia la vista de Checkout
+  const handleBuyNow = () => {
     if (!producto) return;
 
-    const hasTallas = Array.isArray(producto.inventario_tallas) && producto.inventario_tallas.length > 0;
-    if (hasTallas && !tallaSeleccionada) {
-      alert('Por favor, selecciona tu talla antes de continuar con la compra.');
+    const tieneTallas = Array.isArray(producto.inventario_tallas) && producto.inventario_tallas.length > 0;
+    if (tieneTallas && !tallaSeleccionada) {
+      alert('Por favor, selecciona una talla antes de continuar con la compra.');
       return;
     }
 
-    const nombre = producto.nombre || producto.name;
-    const precio = formatPrice(producto.precio_actual || producto.price);
-    const tallaTexto = tallaSeleccionada ? ` en talla ${tallaSeleccionada.talla}` : '';
-    const message = `Hola, me interesa el modelo ${nombre} por ${precio}${tallaTexto}. ¿Aún está disponible?`;
-    const phone = siteConfig?.whatsappNumber || '51999888777';
+    const precioNumerico = typeof (producto.precio_actual ?? producto.price) === 'number'
+      ? (producto.precio_actual ?? producto.price)
+      : parseFloat(String(producto.precio_actual ?? producto.price ?? 0).replace(/[^\d.]/g, '')) || 0;
 
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    const itemCompra = {
+      id_producto: producto.id_producto ?? producto.id,
+      talla: tallaSeleccionada ? String(tallaSeleccionada.talla) : 'Única',
+      cantidad: Number(cantidad) || 1,
+      precio: precioNumerico,
+      precio_unitario: precioNumerico,
+      nombre: producto.nombre || producto.name,
+      imagen_url: producto.imagen_url || producto.image,
+      marca: producto.marca,
+    };
+
+    navigate('/checkout', { state: { items: [itemCompra] } });
   };
 
   // Renderizado Condicional: Estado Cargando
@@ -279,7 +275,7 @@ export const ProductDetail = () => {
                 {precioDisplay}
               </div>
               <p className="mt-1.5 text-xs text-gray-400 font-medium">
-                Precio final. Coordinación y entrega personalizada vía WhatsApp.
+                Precio final oficial. Pago seguro y despacho inmediato.
               </p>
             </div>
 
@@ -321,6 +317,7 @@ export const ProductDetail = () => {
                         onClick={() => {
                           if (!sinStock) {
                             setTallaSeleccionada(item);
+                            setCantidad(1);
                           }
                         }}
                         className={`min-w-[48px] h-12 px-3.5 rounded-xl font-bold text-sm flex items-center justify-center transition-all touch-manipulation ${
@@ -359,16 +356,65 @@ export const ProductDetail = () => {
               </div>
             )}
 
-            {/* Botón de Compra por WhatsApp */}
+            {/* Selector de Cantidad */}
+            <div className="pt-5 border-t border-gray-100 flex items-center justify-between">
+              <div>
+                <span className="block text-sm font-bold text-gray-900 uppercase tracking-wide">
+                  Cantidad
+                </span>
+                {tallaSeleccionada && (
+                  <span className="text-xs text-gray-500">
+                    Máx: {tallaSeleccionada.stock_talla ?? tallaSeleccionada.stock} unidades
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setCantidad((prev) => Math.max(1, prev - 1))}
+                  disabled={cantidad <= 1}
+                  className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold cursor-pointer select-none"
+                  aria-label="Disminuir cantidad"
+                >
+                  −
+                </button>
+                <span className="w-12 text-center font-bold text-gray-900 text-sm select-none">
+                  {cantidad}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const stockDisponible = tallaSeleccionada
+                      ? Number(tallaSeleccionada.stock_talla ?? tallaSeleccionada.stock ?? 99)
+                      : 99;
+                    setCantidad((prev) => Math.min(stockDisponible, prev + 1));
+                  }}
+                  disabled={
+                    tallaSeleccionada
+                      ? cantidad >= Number(tallaSeleccionada.stock_talla ?? tallaSeleccionada.stock ?? 1)
+                      : false
+                  }
+                  className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold cursor-pointer select-none"
+                  aria-label="Aumentar cantidad"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* Botón de Compra Directa (Comprar ahora) */}
             <div className="pt-4 space-y-3">
               <button
                 type="button"
-                onClick={handleWhatsAppClick}
+                onClick={handleBuyNow}
                 className="w-full min-h-[52px] rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-base sm:text-lg shadow-lg shadow-emerald-600/25 inline-flex items-center justify-center gap-3 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500 cursor-pointer touch-manipulation"
-                aria-label={`Comprar ${nombre} por WhatsApp`}
+                aria-label={`Comprar ahora ${nombre}`}
               >
-                <WhatsAppIcon className="w-6 h-6 shrink-0" />
-                <span>Comprar por WhatsApp</span>
+                <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <span>Comprar ahora</span>
               </button>
 
               {/* Sellos de Confianza */}

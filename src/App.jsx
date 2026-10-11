@@ -6,6 +6,7 @@ import HeroSection from './domains/storefront/components/HeroSection.jsx';
 import AboutUs from './domains/storefront/components/AboutUs.jsx';
 import ProductGrid from './domains/catalog/components/ProductGrid.jsx';
 import ProductDetail from './domains/catalog/components/ProductDetail.jsx';
+import CheckoutPage from './domains/checkout/CheckoutPage.jsx';
 import StoreLocation from './domains/storefront/components/StoreLocation.jsx';
 import PrivacyPolicy from './domains/storefront/pages/PrivacyPolicy.jsx';
 import TermsAndConditions from './domains/storefront/pages/TermsAndConditions.jsx';
@@ -40,6 +41,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/productos" element={<ProductGrid />} />
             <Route path="/producto/:id" element={<ProductDetail />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/ubicacion" element={<StoreLocation />} />
             <Route path="/privacidad" element={<PrivacyPolicy />} />
             <Route path="/terminos" element={<TermsAndConditions />} />

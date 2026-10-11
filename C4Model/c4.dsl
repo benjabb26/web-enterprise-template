@@ -12,7 +12,8 @@ workspace "Aura Enterprise Template" "Arquitectura Monolito Modular - E-commerce
             spa = container "Aplicación Web Frontend" "Proporciona toda la interfaz de usuario y la lógica de negocio." "React, Vite" "Web Browser" {
                 moduloPublico = component "Módulo Storefront (Estático)" "Renderiza la página de Inicio, Nosotros y navegación estática. No requiere base de datos." "React"
                 moduloCatalogo = component "Módulo de Catálogo" "Renderiza la lista de productos, filtros y detalle." "React"
-                moduloCheckout = component "Módulo de Checkout" "Gestiona el estado del carrito y la recolección de datos." "React"
+                moduloCheckout = component "Módulo de Checkout" "Gestiona la UI del carrito y la recolección de datos del cliente." "React"
+                moduloOrders = component "Módulo de Pedidos (Orders)" "Gestiona la lógica de negocio, reglas de transacción y persistencia de compras." "JavaScript / Context"
                 moduloAdmin = component "Módulo Panel (Ruta /admin)" "Dashboard privado y formulario de login oculto para el dueño." "React"
                 supabaseClient = component "Cliente Supabase (config/supabase.js)" "Punto único de entrada para el backend." "JavaScript"
             }
@@ -21,7 +22,7 @@ workspace "Aura Enterprise Template" "Arquitectura Monolito Modular - E-commerce
             supabase = container "Backend & Base de Datos (Supabase)" "Gestiona la persistencia de datos, seguridad y API generada automáticamente." "Supabase" "Database" {
                 api = component "API REST (PostgREST)" "Proporciona los endpoints seguros para interactuar con las tablas." "PostgREST"
                 auth = component "Servicio de Autenticación" "Gestiona la identidad de usuarios, administradores y generación de tokens JWT." "Supabase Auth"
-                db = component "Base de Datos Relacional" "Tablas principales: productos, clientes, pedidos, detalles_pedido." "PostgreSQL"
+                db = component "Base de Datos Relacional" "Tablas principales: productos, pedidos, detalles_pedido." "PostgreSQL"
             }
         }
 
@@ -31,21 +32,18 @@ workspace "Aura Enterprise Template" "Arquitectura Monolito Modular - E-commerce
         ecommerce -> pasarela "Procesa pagos de tarjetas"
         erp -> ecommerce "Extrae reportes de ventas y stock (Futuro)"
 
-        # Relaciones - Nivel Contenedor
-        
         # Relaciones - Interacciones de Usuario con Componentes (Frontend)
         cliente -> moduloPublico "Navega por Inicio y páginas estáticas"
         cliente -> moduloCatalogo "Explora catálogo, aplica filtros y selecciona productos"
-        cliente -> moduloCheckout "Agrega productos al carrito y completa la compra"
+        cliente -> moduloCheckout "Agrega productos al carrito y llena el formulario de envío/pago"
         admin -> moduloAdmin "Accede para gestionar productos, pedidos e inventario"
-
-        
 
         # Relaciones - Nivel Componente (Frontend)
         moduloCatalogo -> supabaseClient "Solicita lista y detalle de productos"
-        moduloCheckout -> supabaseClient "Inserta nuevo cliente, pedido y detalles"
-        moduloCheckout -> pasarela "Inicia intento de transacción"
-        moduloAdmin -> supabaseClient "CRUD de productos y actualización de pedidos"
+        moduloCheckout -> moduloOrders "Envía datos validados del formulario y carrito para su procesamiento"
+        moduloOrders -> supabaseClient "Inserta nuevo pedido y detalles (Snapshot)"
+        moduloOrders -> pasarela "Inicia intento de transacción y valida respuesta"
+        moduloAdmin -> supabaseClient "CRUD de productos y actualización de estado de pedidos"
         
         # Relaciones - Nivel Componente (Backend)
         supabaseClient -> api "Consultas de datos" "HTTPS"
