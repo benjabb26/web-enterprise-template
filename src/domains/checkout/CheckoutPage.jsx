@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { procesarPedidoTest } from '../orders/services/orderService.js';
+import { useCart } from '../../core/context/CartContext.jsx';
 
 // Fallback de imagen para ítems en el resumen
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=400';
@@ -16,14 +17,13 @@ const formatPrice = (val) => {
 
 /**
  * Vista de Checkout y Finalización de Compra
- * Recibe ítems seleccionados vía location.state.items y procesa el pedido en la BD.
+ * Consume los productos del carrito global (CartContext) y registra el pedido en Supabase.
  */
 export const CheckoutPage = () => {
-  const location = useLocation();
   const navigate = useNavigate();
 
-  // Ítems transferidos desde la vista de detalle
-  const items = location.state?.items || [];
+  // Consumo del Contexto Global del Carrito
+  const { cartItems, precioTotal, limpiarCarrito } = useCart();
 
   // Estados del formulario del cliente
   const [formData, setFormData] = useState({
@@ -41,13 +41,7 @@ export const CheckoutPage = () => {
   const [procesando, setProcesando] = useState(false);
   const [mensajeError, setMensajeError] = useState(null);
   const [pedidoExitosoId, setPedidoExitosoId] = useState(null);
-
-  // Cálculo de subtotales y total
-  const montoTotal = items.reduce((acc, item) => {
-    const precio = Number(item.precio ?? item.precio_unitario ?? item.precio_actual ?? 0);
-    const cant = Number(item.cantidad) || 1;
-    return acc + precio * cant;
-  }, 0);
+  const [totalPagadoSnapshot, setTotalPagadoSnapshot] = useState(0);
 
   // Manejador de cambios en los inputs
   const handleInputChange = (e) => {
@@ -75,7 +69,7 @@ export const CheckoutPage = () => {
       return;
     }
 
-    if (!items || items.length === 0) {
+    if (!cartItems || cartItems.length === 0) {
       setMensajeError('No hay productos en el pedido para procesar.');
       return;
     }
@@ -93,11 +87,15 @@ export const CheckoutPage = () => {
         metodo_pago: metodoPago,
       };
 
-      const resultado = await procesarPedidoTest(datosCliente, items, montoTotal);
+      // Guardar snapshot del monto antes de limpiar el carrito
+      const snapshotTotal = precioTotal;
+      const resultado = await procesarPedidoTest(datosCliente, cartItems, snapshotTotal);
 
       if (resultado && resultado.exito) {
+        setTotalPagadoSnapshot(snapshotTotal);
         setPedidoExitosoId(resultado.id_pedido);
         alert(`¡Pedido registrado con éxito! ID del pedido: ${resultado.id_pedido}`);
+        limpiarCarrito();
       } else {
         const errorMsg = resultado?.error || 'No se pudo registrar el pedido. Intenta nuevamente.';
         setMensajeError(errorMsg);
@@ -150,7 +148,7 @@ export const CheckoutPage = () => {
             </div>
             <div className="flex items-center justify-between text-xs sm:text-sm pt-2 border-t border-gray-200">
               <span className="text-gray-900 font-bold">Total Pagado:</span>
-              <span className="font-extrabold text-emerald-600 text-base">{formatPrice(montoTotal)}</span>
+              <span className="font-extrabold text-emerald-600 text-base">{formatPrice(totalPagadoSnapshot)}</span>
             </div>
           </div>
 
@@ -174,7 +172,7 @@ export const CheckoutPage = () => {
   }
 
   // VISTA 2: Estado Vacío (Sin productos en el pedido)
-  if (!items || items.length === 0) {
+  if (!cartItems || cartItems.length === 0) {
     return (
       <div className="min-h-[75vh] flex flex-col items-center justify-center px-4 py-16 sm:py-24 bg-gray-50/50 text-center">
         <div className="w-20 h-20 rounded-3xl bg-amber-50 text-amber-500 flex items-center justify-center text-4xl mb-6 shadow-sm border border-amber-100">
@@ -489,21 +487,21 @@ export const CheckoutPage = () => {
                     Resumen del Pedido
                   </h2>
                   <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-                    {items.length} {items.length === 1 ? 'producto' : 'productos'}
+                    {cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'}
                   </span>
                 </div>
 
                 {/* Listado de Productos */}
                 <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
-                  {items.map((item, index) => {
-                    const precioUnit = Number(item.precio ?? item.precio_unitario ?? item.precio_actual ?? 0);
-                    const cant = Number(item.cantidad) || 1;
+                  {cartItems.map((item, index) => {
+                    const precioUnit = Number(item.precio || 0);
+                    const cant = Number(item.cantidad || 1);
                     const subtotalItem = precioUnit * cant;
-                    const imagenSrc = item.imagen_url || item.image || FALLBACK_IMAGE;
+                    const imagenSrc = item.imagen || FALLBACK_IMAGE;
 
                     return (
                       <div
-                        key={`${item.id_producto || item.id}-${item.talla}-${index}`}
+                        key={`${item.id_producto}-${item.talla}-${index}`}
                         className="flex gap-4 p-3 rounded-2xl bg-gray-50/60 border border-gray-100 items-center"
                       >
                         {/* Miniatura del Producto */}
@@ -521,11 +519,6 @@ export const CheckoutPage = () => {
 
                         {/* Datos del Producto */}
                         <div className="flex-1 min-w-0">
-                          {item.marca && (
-                            <span className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">
-                              {item.marca}
-                            </span>
-                          )}
                           <h3 className="text-sm font-extrabold text-gray-900 truncate">
                             {item.nombre || 'Zapatilla Urbana'}
                           </h3>
@@ -558,7 +551,7 @@ export const CheckoutPage = () => {
                 <div className="pt-4 border-t border-gray-100 space-y-2.5 text-sm">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal de productos:</span>
-                    <span className="font-semibold text-gray-800">{formatPrice(montoTotal)}</span>
+                    <span className="font-semibold text-gray-800">{formatPrice(precioTotal)}</span>
                   </div>
 
                   <div className="flex justify-between items-center text-gray-600">
@@ -574,7 +567,7 @@ export const CheckoutPage = () => {
                   <div className="pt-3 border-t border-gray-200 flex justify-between items-baseline">
                     <span className="text-base font-extrabold text-gray-900">Total a pagar:</span>
                     <span className="text-2xl sm:text-3xl font-extrabold text-emerald-600 tracking-tight">
-                      {formatPrice(montoTotal)}
+                      {formatPrice(precioTotal)}
                     </span>
                   </div>
                 </div>

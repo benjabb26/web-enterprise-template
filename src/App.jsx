@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './core/components/Navbar.jsx';
 import Footer from './core/components/Footer.jsx';
+import CartSidebar from './core/components/CartSidebar.jsx';
+import { CartProvider } from './core/context/CartContext.jsx';
 import HeroSection from './domains/storefront/components/HeroSection.jsx';
 import AboutUs from './domains/storefront/components/AboutUs.jsx';
 import ProductGrid from './domains/catalog/components/ProductGrid.jsx';
@@ -31,32 +33,37 @@ const HomePage = () => (
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50 flex flex-col antialiased w-full overflow-x-hidden">
-        {/* Navbar persistente en todas las rutas */}
-        <Navbar />
+      <CartProvider>
+        <div className="min-h-screen bg-gray-50 flex flex-col antialiased w-full overflow-x-hidden">
+          {/* Navbar persistente en todas las rutas */}
+          <Navbar />
 
-        {/* Contenido enrutado dinámicamente */}
-        <main className="flex-1 w-full overflow-x-hidden">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/productos" element={<ProductGrid />} />
-            <Route path="/producto/:id" element={<ProductDetail />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/ubicacion" element={<StoreLocation />} />
-            <Route path="/privacidad" element={<PrivacyPolicy />} />
-            <Route path="/terminos" element={<TermsAndConditions />} />
-            <Route path="/cookies" element={<CookiePolicy />} />
-            {/* Fallback para rutas inexistentes */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
+          {/* Drawer / Slide-over lateral interactivo del Carrito */}
+          <CartSidebar />
 
-        {/* Footer persistente en todas las rutas */}
-        <Footer />
+          {/* Contenido enrutado dinámicamente */}
+          <main className="flex-1 w-full overflow-x-hidden">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/productos" element={<ProductGrid />} />
+              <Route path="/producto/:id" element={<ProductDetail />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/ubicacion" element={<StoreLocation />} />
+              <Route path="/privacidad" element={<PrivacyPolicy />} />
+              <Route path="/terminos" element={<TermsAndConditions />} />
+              <Route path="/cookies" element={<CookiePolicy />} />
+              {/* Fallback para rutas inexistentes */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
 
-        {/* Banner Global de Consentimiento de Cookies */}
-        <CookieBanner />
-      </div>
+          {/* Footer persistente en todas las rutas */}
+          <Footer />
+
+          {/* Banner Global de Consentimiento de Cookies */}
+          <CookieBanner />
+        </div>
+      </CartProvider>
     </Router>
   );
 }

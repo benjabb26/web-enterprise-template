@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import catalogService from '../services/catalogService';
+import { useCart } from '../../../core/context/CartContext.jsx';
 
 // Fallback de alta resolución para calzado
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=1000';
@@ -25,6 +26,9 @@ const formatPrice = (val) => {
 export const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // Integración con el Contexto Global del Carrito
+  const { agregarAlCarrito, abrirCarrito } = useCart();
 
   // Estados del ciclo de vida del producto
   const [producto, setProducto] = useState(null);
@@ -92,32 +96,44 @@ export const ProductDetail = () => {
     };
   }, [id]);
 
-  // Manejador de compra directa hacia la vista de Checkout
-  const handleBuyNow = () => {
-    if (!producto) return;
+  // Función auxiliar para validar la talla y armar el objeto estricto del producto
+  const armarItemProducto = () => {
+    if (!producto) return null;
 
     const tieneTallas = Array.isArray(producto.inventario_tallas) && producto.inventario_tallas.length > 0;
     if (tieneTallas && !tallaSeleccionada) {
-      alert('Por favor, selecciona una talla antes de continuar con la compra.');
-      return;
+      alert('Por favor, selecciona una talla antes de continuar.');
+      return null;
     }
 
     const precioNumerico = typeof (producto.precio_actual ?? producto.price) === 'number'
       ? (producto.precio_actual ?? producto.price)
       : parseFloat(String(producto.precio_actual ?? producto.price ?? 0).replace(/[^\d.]/g, '')) || 0;
 
-    const itemCompra = {
+    return {
       id_producto: producto.id_producto ?? producto.id,
+      nombre: producto.nombre || producto.name,
+      precio: precioNumerico,
       talla: tallaSeleccionada ? String(tallaSeleccionada.talla) : 'Única',
       cantidad: Number(cantidad) || 1,
-      precio: precioNumerico,
-      precio_unitario: precioNumerico,
-      nombre: producto.nombre || producto.name,
-      imagen_url: producto.imagen_url || producto.image,
-      marca: producto.marca,
+      imagen: producto.imagen_url || producto.image || FALLBACK_IMAGE,
     };
+  };
 
-    navigate('/checkout', { state: { items: [itemCompra] } });
+  // Manejador del botón secundario "Agregar al carrito"
+  const handleAddToCart = () => {
+    const item = armarItemProducto();
+    if (!item) return;
+    agregarAlCarrito(item);
+    abrirCarrito();
+  };
+
+  // Manejador del botón principal "Comprar ahora"
+  const handleBuyNow = () => {
+    const item = armarItemProducto();
+    if (!item) return;
+    agregarAlCarrito(item);
+    navigate('/checkout');
   };
 
   // Renderizado Condicional: Estado Cargando
@@ -403,19 +419,35 @@ export const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Botón de Compra Directa (Comprar ahora) */}
+            {/* Acciones de Compra y Carrito */}
             <div className="pt-4 space-y-3">
-              <button
-                type="button"
-                onClick={handleBuyNow}
-                className="w-full min-h-[52px] rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-base sm:text-lg shadow-lg shadow-emerald-600/25 inline-flex items-center justify-center gap-3 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500 cursor-pointer touch-manipulation"
-                aria-label={`Comprar ahora ${nombre}`}
-              >
-                <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-                <span>Comprar ahora</span>
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Botón Secundario: Agregar al carrito */}
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="w-full min-h-[52px] rounded-2xl bg-white hover:bg-gray-50 active:scale-95 text-gray-900 font-bold text-sm sm:text-base border-2 border-gray-900 inline-flex items-center justify-center gap-2.5 transition-all shadow-xs cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                  aria-label={`Agregar al carrito ${nombre}`}
+                >
+                  <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                  <span>Agregar al carrito</span>
+                </button>
+
+                {/* Botón Principal: Comprar ahora */}
+                <button
+                  type="button"
+                  onClick={handleBuyNow}
+                  className="w-full min-h-[52px] rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-600/25 inline-flex items-center justify-center gap-2.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500 cursor-pointer touch-manipulation"
+                  aria-label={`Comprar ahora ${nombre}`}
+                >
+                  <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>Comprar ahora</span>
+                </button>
+              </div>
 
               {/* Sellos de Confianza */}
               <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5 text-xs text-gray-400 font-medium pt-2">
