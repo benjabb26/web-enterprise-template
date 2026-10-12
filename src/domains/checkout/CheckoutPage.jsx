@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { procesarPedidoTest } from '../orders/services/orderService.js';
+import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
+import { crearPedidoSupabase, generarPreferenciaPago } from '../orders/services/orderService.js';
 import { useCart } from '../../core/context/CartContext.jsx';
+
+// Inicialización global de Mercado Pago con la clave pública de entorno
+const mpPublicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
+if (mpPublicKey) {
+  initMercadoPago(mpPublicKey, { locale: 'es-PE' });
+}
 
 // Fallback de imagen para ítems en el resumen
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=400';
@@ -17,7 +24,7 @@ const formatPrice = (val) => {
 
 /**
  * Vista de Checkout y Finalización de Compra
- * Consume los productos del carrito global (CartContext) y registra el pedido en Supabase.
+ * Consume los productos del carrito global (CartContext) y genera la preferencia de pago con Mercado Pago.
  */
 export const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -34,8 +41,11 @@ export const CheckoutPage = () => {
     referencia_direccion: '',
   });
 
-  // Método de pago: 'Tarjetas de Débito/Crédito' | 'Yape/Plin'
-  const [metodoPago, setMetodoPago] = useState('Tarjetas de Débito/Crédito');
+  // Estado para el ID de preferencia de Mercado Pago
+  const [preferenceId, setPreferenceId] = useState(null);
+
+  // Estado para el ID del pedido registrado en Supabase
+  const [pedidoId, setPedidoId] = useState(null);
 
   // Estados del proceso de compra
   const [procesando, setProcesando] = useState(false);
@@ -53,11 +63,13 @@ export const CheckoutPage = () => {
     if (mensajeError) setMensajeError(null);
   };
 
-  // Manejador de envío del pedido
+  // Manejador de envío con orden transaccional estricto
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
 
-    // Validación de campos obligatorios
+    // Validación de campos obligatorios requeridos
     if (
       !formData.nombre_completo.trim() ||
       !formData.correo_electronico.trim() ||
@@ -84,28 +96,26 @@ export const CheckoutPage = () => {
         telefono: formData.telefono.trim(),
         direccion_envio: formData.direccion_envio.trim(),
         referencia_direccion: formData.referencia_direccion.trim(),
-        metodo_pago: metodoPago,
       };
 
-      // Guardar snapshot del monto antes de limpiar el carrito
-      const snapshotTotal = precioTotal;
-      const resultado = await procesarPedidoTest(datosCliente, cartItems, snapshotTotal);
-
-      if (resultado && resultado.exito) {
-        setTotalPagadoSnapshot(snapshotTotal);
-        setPedidoExitosoId(resultado.id_pedido);
-        alert(`¡Pedido registrado con éxito! ID del pedido: ${resultado.id_pedido}`);
-        limpiarCarrito();
-      } else {
-        const errorMsg = resultado?.error || 'No se pudo registrar el pedido. Intenta nuevamente.';
-        setMensajeError(errorMsg);
-        alert(`Error al registrar el pedido: ${errorMsg}`);
+      // Paso 1 - Guardar Pedido en Supabase
+      const nuevoPedidoId = await crearPedidoSupabase(cartItems, datosCliente);
+      if (!nuevoPedidoId) {
+        throw new Error('No se pudo registrar el pedido en la base de datos.');
       }
+      setPedidoId(nuevoPedidoId);
+
+      // Paso 2 - Generar Preferencia en Mercado Pago pasando nuevoPedidoId
+      const idPreferencia = await generarPreferenciaPago(cartItems, datosCliente, nuevoPedidoId);
+      if (!idPreferencia) {
+        throw new Error('No se pudo obtener la preferencia de pago de Mercado Pago.');
+      }
+
+      // Paso 3 - Mostrar <Wallet /> y ocultar botón/formulario
+      setPreferenceId(idPreferencia);
     } catch (err) {
-      console.error('Error inesperado en checkout:', err);
-      const errorMsg = err?.message || 'Error de conexión al procesar el pedido.';
-      setMensajeError(errorMsg);
-      alert(`Error: ${errorMsg}`);
+      console.error('Error al procesar el pedido:', err);
+      setMensajeError(err?.message || 'Error al procesar el pedido.');
     } finally {
       setProcesando(false);
     }
@@ -144,7 +154,7 @@ export const CheckoutPage = () => {
             </div>
             <div className="flex items-center justify-between text-xs sm:text-sm">
               <span className="text-gray-500 font-medium">Método de Pago:</span>
-              <span className="font-semibold text-gray-800">{metodoPago}</span>
+              <span className="font-semibold text-gray-800">Mercado Pago</span>
             </div>
             <div className="flex items-center justify-between text-xs sm:text-sm pt-2 border-t border-gray-200">
               <span className="text-gray-900 font-bold">Total Pagado:</span>
@@ -261,219 +271,253 @@ export const CheckoutPage = () => {
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
 
-            {/* COLUMNA IZQUIERDA: Formulario de Datos de Envío y Método de Pago (7 cols) */}
+            {/* COLUMNA IZQUIERDA: Formulario de Datos o Wallet de Mercado Pago (7 cols) */}
             <div className="lg:col-span-7 space-y-6">
 
-              {/* Tarjeta 1: Datos Personales y de Entrega */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-6">
-                <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
-                    1
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-extrabold text-gray-900">
-                      Datos de Envío y Contacto
-                    </h2>
-                    <p className="text-xs text-gray-500">
-                      Ingresa la información exacta para coordinar la entrega de tu calzado.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Nombre Completo */}
-                  <div>
-                    <label htmlFor="nombre_completo" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                      Nombre Completo <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="nombre_completo"
-                      name="nombre_completo"
-                      type="text"
-                      required
-                      value={formData.nombre_completo}
-                      onChange={handleInputChange}
-                      placeholder="Ej. Juan Pérez López"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
-                    />
-                  </div>
-
-                  {/* Correo y Teléfono en 2 columnas en pantallas medianas */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="correo_electronico" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                        Correo Electrónico <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="correo_electronico"
-                        name="correo_electronico"
-                        type="email"
-                        required
-                        value={formData.correo_electronico}
-                        onChange={handleInputChange}
-                        placeholder="ejemplo@correo.com"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="telefono" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                        Teléfono / Celular <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="telefono"
-                        name="telefono"
-                        type="tel"
-                        required
-                        value={formData.telefono}
-                        onChange={handleInputChange}
-                        placeholder="Ej. 987 654 321"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Dirección de Envío */}
-                  <div>
-                    <label htmlFor="direccion_envio" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                      Dirección de Envío <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="direccion_envio"
-                      name="direccion_envio"
-                      type="text"
-                      required
-                      value={formData.direccion_envio}
-                      onChange={handleInputChange}
-                      placeholder="Calle / Av., Número, Distrito o Ciudad"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
-                    />
-                  </div>
-
-                  {/* Referencia de Dirección */}
-                  <div>
-                    <label htmlFor="referencia_direccion" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                      Referencia de Entrega <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="referencia_direccion"
-                      name="referencia_direccion"
-                      type="text"
-                      required
-                      value={formData.referencia_direccion}
-                      onChange={handleInputChange}
-                      placeholder="Ej. Frente al parque, casa blanca de 2 pisos, portón negro"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tarjeta 2: Selector de Método de Pago */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-5">
-                <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
-                    2
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-extrabold text-gray-900">
-                      Método de Pago
-                    </h2>
-                    <p className="text-xs text-gray-500">
-                      Selecciona la opción de pago con la que deseas abonar tu compra.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Opciones seleccionables con botones de tarjeta modernos */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Opción 1: Tarjetas */}
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setMetodoPago('Tarjetas de Débito/Crédito')}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        setMetodoPago('Tarjetas de Débito/Crédito');
-                      }
-                    }}
-                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between select-none ${
-                      metodoPago === 'Tarjetas de Débito/Crédito'
-                        ? 'border-emerald-600 bg-emerald-50/30 shadow-sm ring-2 ring-emerald-600/10'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="w-9 h-9 rounded-xl bg-gray-900 text-white flex items-center justify-center text-lg">
+              {preferenceId ? (
+                /* VISTA CONDICIONAL: PAGO SEGURO CON MERCADO PAGO (Formulario Oculto) */
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-100 shadow-sm space-y-6 transition-all">
+                  {/* Encabezado de Pago Seguro */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-gray-100 gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-xl border border-sky-100 shadow-sm">
                         💳
                       </div>
-                      <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        metodoPago === 'Tarjetas de Débito/Crédito'
-                          ? 'border-emerald-600 bg-emerald-600 text-white text-xs'
-                          : 'border-gray-300'
-                      }`}>
-                        {metodoPago === 'Tarjetas de Débito/Crédito' && '✓'}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="font-extrabold text-sm text-gray-900">
-                        Tarjetas de Débito / Crédito
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Visa, Mastercard, American Express
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Opción 2: Yape / Plin */}
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setMetodoPago('Yape/Plin')}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        setMetodoPago('Yape/Plin');
-                      }
-                    }}
-                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between select-none ${
-                      metodoPago === 'Yape/Plin'
-                        ? 'border-emerald-600 bg-emerald-50/30 shadow-sm ring-2 ring-emerald-600/10'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black text-xs">
-                        QR
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">
+                            Pago Seguro con Mercado Pago
+                          </h2>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                            Preferencia Lista
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Tus datos de entrega fueron validados. Procede al pago seguro oficial.
+                        </p>
                       </div>
-                      <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        metodoPago === 'Yape/Plin'
-                          ? 'border-emerald-600 bg-emerald-600 text-white text-xs'
-                          : 'border-gray-300'
-                      }`}>
-                        {metodoPago === 'Yape/Plin' && '✓'}
+                    </div>
+
+                    {/* Botón para editar datos si el usuario desea volver atrás */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreferenceId(null);
+                        setPedidoId(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-emerald-700 bg-gray-50 hover:bg-emerald-50/60 border border-gray-200 hover:border-emerald-200 px-3.5 py-2 rounded-xl transition-all self-start sm:self-center cursor-pointer"
+                      title="Modificar los datos de envío y contacto"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      <span>Editar mis datos</span>
+                    </button>
+                  </div>
+
+                  {/* Resumen de los datos del cliente confirmados */}
+                  <div className="bg-gray-50/70 rounded-2xl p-4 sm:p-5 border border-gray-200/80 space-y-2 text-xs sm:text-sm">
+                    {pedidoId && (
+                      <div className="flex justify-between items-center text-gray-500 pb-2 border-b border-gray-200/80">
+                        <span className="font-medium">Nº de Pedido:</span>
+                        <span className="font-mono font-bold text-gray-900 bg-white px-2.5 py-0.5 rounded border border-gray-200 text-xs shadow-xs">
+                          #{pedidoId}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-gray-500">
+                      <span className="font-medium">Destinatario:</span>
+                      <span className="font-bold text-gray-900">{formData.nombre_completo}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-gray-500">
+                      <span className="font-medium">Correo Electrónico:</span>
+                      <span className="font-semibold text-gray-800">{formData.correo_electronico}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-gray-500">
+                      <span className="font-medium">Teléfono:</span>
+                      <span className="font-semibold text-gray-800">{formData.telefono}</span>
+                    </div>
+                    <div className="flex justify-between items-start text-gray-500 pt-2 border-t border-gray-200">
+                      <span className="font-medium shrink-0">Dirección de Entrega:</span>
+                      <span className="font-semibold text-gray-800 text-right ml-4">
+                        {formData.direccion_envio} {formData.referencia_direccion ? `(${formData.referencia_direccion})` : ''}
                       </span>
                     </div>
-                    <div>
-                      <h3 className="font-extrabold text-sm text-gray-900">
-                        Yape / Plin
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Transferencia móvil instantánea sin comisiones
+                  </div>
+
+                  {/* Aviso informativo de seguridad */}
+                  <div className="p-4 rounded-2xl bg-sky-50/70 border border-sky-100 flex items-start gap-3">
+                    <span className="text-xl">🛡️</span>
+                    <div className="text-xs text-sky-950">
+                      <p className="font-bold">Pasarela Oficial y Cifrada</p>
+                      <p className="mt-0.5 text-sky-800">
+                        Haz clic en el botón oficial de Mercado Pago a continuación para procesar tu orden con tarjetas de débito/crédito o dinero en cuenta con total protección.
                       </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Nota informativa según método */}
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600 flex items-center gap-2.5">
-                  <span className="text-base">🔒</span>
-                  <span>
-                    {metodoPago === 'Tarjetas de Débito/Crédito'
-                      ? 'Transacción protegida con cifrado SSL de 256 bits.'
-                      : 'Se asociará el comprobante de transferencia al ID de tu pedido.'}
-                  </span>
+                  {/* Componente Oficial Wallet de Mercado Pago */}
+                  <div className="pt-2 flex flex-col items-center justify-center">
+                    <div className="w-full max-w-md min-h-[56px] flex items-center justify-center">
+                      <Wallet initialization={{ preferenceId }} />
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-2 text-center">
+                      Procesamiento oficial con respaldo y cifrado de Mercado Pago.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* VISTA: FORMULARIO DE DATOS DE ENVÍO (Cuando aún no hay preferenceId) */
+                <>
+                  {/* Tarjeta 1: Datos Personales y de Entrega */}
+                  <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-6">
+                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
+                        1
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-extrabold text-gray-900">
+                          Datos de Envío y Contacto
+                        </h2>
+                        <p className="text-xs text-gray-500">
+                          Ingresa la información exacta para coordinar la entrega de tu calzado.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Nombre Completo */}
+                      <div>
+                        <label htmlFor="nombre_completo" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+                          Nombre Completo <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="nombre_completo"
+                          name="nombre_completo"
+                          type="text"
+                          required
+                          value={formData.nombre_completo}
+                          onChange={handleInputChange}
+                          placeholder="Ej. Juan Pérez López"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
+                        />
+                      </div>
+
+                      {/* Correo y Teléfono en 2 columnas en pantallas medianas */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="correo_electronico" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+                            Correo Electrónico <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            id="correo_electronico"
+                            name="correo_electronico"
+                            type="email"
+                            required
+                            value={formData.correo_electronico}
+                            onChange={handleInputChange}
+                            placeholder="ejemplo@correo.com"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="telefono" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+                            Teléfono / Celular <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            id="telefono"
+                            name="telefono"
+                            type="tel"
+                            required
+                            value={formData.telefono}
+                            onChange={handleInputChange}
+                            placeholder="Ej. 987 654 321"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Dirección de Envío */}
+                      <div>
+                        <label htmlFor="direccion_envio" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+                          Dirección de Envío <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="direccion_envio"
+                          name="direccion_envio"
+                          type="text"
+                          required
+                          value={formData.direccion_envio}
+                          onChange={handleInputChange}
+                          placeholder="Calle / Av., Número, Distrito o Ciudad"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
+                        />
+                      </div>
+
+                      {/* Referencia de Dirección */}
+                      <div>
+                        <label htmlFor="referencia_direccion" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+                          Referencia de Entrega <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="referencia_direccion"
+                          name="referencia_direccion"
+                          type="text"
+                          required
+                          value={formData.referencia_direccion}
+                          onChange={handleInputChange}
+                          placeholder="Ej. Frente al parque, casa blanca de 2 pisos, portón negro"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all bg-gray-50/30"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tarjeta 2: Pasarela de Pago Oficial Mercado Pago */}
+                  <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-5">
+                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+                      <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-lg">
+                        2
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-extrabold text-gray-900">
+                          Método de Pago Oficial
+                        </h2>
+                        <p className="text-xs text-gray-500">
+                          Procesado de forma segura e instantánea a través de Mercado Pago.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl border-2 border-emerald-600 bg-emerald-50/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-sky-500 text-white flex items-center justify-center text-xl shadow-sm">
+                          💳
+                        </div>
+                        <div>
+                          <h3 className="font-extrabold text-sm text-gray-900">
+                            Mercado Pago
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Tarjetas de débito, crédito y billeteras digitales
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/70 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
+                        Cifrado SSL 256 bits
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600 flex items-center gap-2.5">
+                      <span className="text-base">🔒</span>
+                      <span>
+                        Al pulsar el botón de pago, se generará tu preferencia oficial de Mercado Pago para procesar tu orden.
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
 
             </div>
 
@@ -572,34 +616,67 @@ export const CheckoutPage = () => {
                   </div>
                 </div>
 
-                {/* Botón Principal: Comprar Test (Insertar BD) */}
+                {/* Botón Principal: Pagar con Mercado Pago o Indicador cuando preferenceId existe */}
                 <div className="pt-2 space-y-3">
-                  <button
-                    type="submit"
-                    disabled={procesando}
-                    className={`w-full min-h-[52px] rounded-2xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500 ${
-                      procesando
-                        ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
-                        : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-emerald-600/25'
-                    }`}
-                  >
-                    {procesando ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Procesando pedido...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  {preferenceId ? (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200/80 text-sky-950 text-center space-y-1 shadow-sm">
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-sky-500 text-white text-sm font-black mb-1 shadow-sm">
+                          💳
+                        </div>
+                        <p className="text-xs font-extrabold uppercase tracking-wider text-sky-800">
+                          Preferencia Lista
+                        </p>
+                        <p className="text-xs text-sky-900 font-medium">
+                          Procede con el botón oficial de Mercado Pago en la sección de pago.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreferenceId(null);
+                          setPedidoId(null);
+                        }}
+                        className="w-full py-3 px-4 rounded-xl text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        title="Modificar los datos de envío"
+                      >
+                        <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
-                        <span>Comprar Test (Insertar BD)</span>
-                      </>
-                    )}
-                  </button>
+                        <span>Editar datos de envío</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={procesando}
+                      className={`w-full min-h-[52px] rounded-2xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500 ${
+                        procesando
+                          ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
+                          : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-emerald-600/25'
+                      }`}
+                    >
+                      {procesando ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Generando preferencia de pago...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                          <span>Pagar con Mercado Pago</span>
+                        </>
+                      )}
+                    </button>
+                  )}
 
                   <p className="text-[11px] text-center text-gray-400">
-                    Al confirmar, tu orden se insertará directamente en la base de datos de producción.
+                    {preferenceId
+                      ? 'Transacción protegida con el respaldo oficial de Mercado Pago.'
+                      : 'Al continuar, se generará tu preferencia de pago de forma 100% segura.'}
                   </p>
                 </div>
 
